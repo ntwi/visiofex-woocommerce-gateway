@@ -1,0 +1,63 @@
+# WordPress Core Files
+wp-admin/
+wp-content/
+wp-includes/
+wp-*.php
+index.php
+xmlrpc.php
+readme.html
+license.txt
+
+# Plugins (except our VisioFex plugin)
+plugins/*
+!plugins/visiofex-woocommerce-gateway/
+
+# Themes
+themes/
+
+# Uploads
+uploads/
+
+# WordPress Configuration
+wp-config.php
+wp-config-sample.php
+
+# Database
+*.sql
+*.sql.gz
+
+# Development Files
+.vscode/
+.idea/
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Node.js (if used for development)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Composer
+vendor/
+composer.lock
+
+# OS Files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Git
+.gitignore
+
+# Docker (if used)
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# Environment files
+.env
+.env.local
+.env.production
