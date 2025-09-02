@@ -66,5 +66,13 @@ Dockerfile
 dist/
 .build/
 
+# Additional dev files
+docker-wordpress/
+scripts/
+plugins/
+composer.json
+README.md
+visiofex.com.har
+
 # Git
 .gitignore
