@@ -61,3 +61,10 @@ Dockerfile
 .env
 .env.local
 .env.production
+
+# Build artifacts
+dist/
+.build/
+
+# Git
+.gitignore
