@@ -15,18 +15,19 @@ Hosted checkout session for VisioFex/KonaCash with refunds and WooCommerce Block
 - Refunds are supported from the WooCommerce order screen
 
 == Installation ==
-1. Upload the ZIP via Plugins > Add New > Upload Plugin and activate.
-2. Go to WooCommerce > Settings > Payments > VisioFex Pay and click Manage.
+1. Upload the ZIP via Plugins > Add New > Upload Plugin and click activate.
 
 == Configuration ==
 In the VisioFex portal:
 - Generate a Production API Key and copy it into the plugin's Secret Key field.
 - Locate your App ID and copy it into the Vendor ID field.
 
-In WooCommerce (plugin settings page):
-- Paste your Secret Key and Vendor ID.
+- in wordpress find the visiofex plugon and make sure its activated, then click settings
+- Paste your production key from visiofex into Secret Key
+- Paste your app id from visiofex into Vendor ID.
 - Set Your Store Domain to your site URL (for example: https://example.com). Do not include a trailing slash.
 - For production, uncheck Enable test.
+- click the enable checkbox at thr topnof the plugin
 - Save changes and enable the gateway.
 
 Requirements and tips:
