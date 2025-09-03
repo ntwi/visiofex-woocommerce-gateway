@@ -74,6 +74,15 @@ add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), function( $lin
 add_action( 'plugins_loaded', function() {
 
     class WC_Gateway_VisioFex extends WC_Payment_Gateway {
+        // Declare properties to fix PHP 8.2+ deprecation warnings
+        public $testmode;
+        public $secret_key;
+        public $vendor_id;
+        public $store_domain;
+        public $api_base;
+        public $mode;
+        public $logging;
+
         public function __construct() {
             $this->id                 = 'visiofex';
             // Use the icon property — Woo renders this properly as an <img>

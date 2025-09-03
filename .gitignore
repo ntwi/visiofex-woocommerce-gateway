@@ -61,6 +61,7 @@ Dockerfile
 .env
 .env.local
 .env.production
+.env.example
 
 # Build artifacts
 dist/
