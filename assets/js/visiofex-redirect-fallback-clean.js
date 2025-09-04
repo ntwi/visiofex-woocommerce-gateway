@@ -36,50 +36,7 @@
         console.info('[VisioFex] Automatic redirect failed. Showing fallback link:', redirectUrl);
     }
     
-    function extractJsonFromResponse(text) {
-        // Method 1: Look for {"order_id" pattern (most reliable)
-        var orderIdMatch = text.match(/\{"order_id"[^}]+.*?\}(?=\s*$)/s);
-        if (orderIdMatch) {
-            try {
-                return JSON.parse(orderIdMatch[0]);
-            } catch (e) {
-                console.warn('[VisioFex] Method 1 failed:', e);
-            }
-        }
-        
-        // Method 2: Find last complete JSON object
-        var lastBrace = text.lastIndexOf('}');
-        if (lastBrace !== -1) {
-            // Work backwards to find the matching opening brace
-            var braceCount = 0;
-            var startPos = lastBrace;
-            for (var i = lastBrace; i >= 0; i--) {
-                if (text[i] === '}') braceCount++;
-                if (text[i] === '{') braceCount--;
-                if (braceCount === 0) {
-                    startPos = i;
-                    break;
-                }
-            }
-            try {
-                return JSON.parse(text.substring(startPos, lastBrace + 1));
-            } catch (e) {
-                console.warn('[VisioFex] Method 2 failed:', e);
-            }
-        }
-        
-        // Method 3: Original fallback
-        var jsonStart = text.indexOf('{');
-        if (jsonStart !== -1) {
-            try {
-                return JSON.parse(text.substring(jsonStart));
-            } catch (e) {
-                console.warn('[VisioFex] Method 3 failed:', e);
-            }
-        }
-        
-        return null;
-    }
+    function extractRedirectUrl(responseData) {
         if (!responseData || !responseData.payment_result) {
             return null;
         }
@@ -98,6 +55,7 @@
         return null;
     }
     
+    // Only wrap fetch, avoid XHR completely
     var originalFetch = window.fetch;
     window.fetch = function() {
         var url = arguments[0] && arguments[0].toString();
@@ -130,42 +88,5 @@
         });
     };
     
-    var OriginalXHR = window.XMLHttpRequest;
-    var XHROpen = OriginalXHR.prototype.open;
-    var XHRSend = OriginalXHR.prototype.send;
-    
-    OriginalXHR.prototype.open = function(method, url) {
-        this._visiofexMonitor = url && url.toString().indexOf('/wc/store/v1/checkout') !== -1;
-        return XHROpen.apply(this, arguments);
-    };
-    
-    OriginalXHR.prototype.send = function(data) {
-        if (this._visiofexMonitor) {
-            this.addEventListener('readystatechange', function() {
-                if (this.readyState === 4 && this.status >= 200 && this.status < 300) {
-                    try {
-                        var responseText = this.responseText || '';
-                        var jsonStart = responseText.indexOf('{');
-                        var jsonText = jsonStart !== -1 ? responseText.substring(jsonStart) : responseText;
-                        var responseData = JSON.parse(jsonText);
-                        var redirectUrl = extractRedirectUrl(responseData);
-                        
-                        if (redirectUrl) {
-                            setTimeout(function() {
-                                if (window.location.href.indexOf('checkout') !== -1) {
-                                    showRedirectFallback(redirectUrl);
-                                }
-                            }, 2000);
-                        }
-                    } catch (e) {
-                        console.warn('[VisioFex] Could not parse XHR checkout response:', e);
-                    }
-                }
-            });
-        }
-        
-        return XHRSend.apply(this, arguments);
-    };
-    
-    console.info('[VisioFex] Redirect fallback system initialized');
+    console.info('[VisioFex] Clean redirect fallback system initialized (fetch only)');
 })();

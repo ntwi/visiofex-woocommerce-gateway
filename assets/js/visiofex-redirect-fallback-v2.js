@@ -37,20 +37,36 @@
     }
     
     function extractJsonFromResponse(text) {
-        // Method 1: Look for {"order_id" pattern (most reliable)
-        var orderIdMatch = text.match(/\{"order_id"[^}]+.*?\}(?=\s*$)/s);
-        if (orderIdMatch) {
-            try {
-                return JSON.parse(orderIdMatch[0]);
-            } catch (e) {
-                console.warn('[VisioFex] Method 1 failed:', e);
+        // Method 1: Look for order_id pattern and extract complete JSON
+        var orderIdPos = text.indexOf('"order_id"');
+        if (orderIdPos !== -1) {
+            // Find the start of the JSON object containing order_id
+            var bracePos = text.lastIndexOf('{', orderIdPos);
+            if (bracePos !== -1) {
+                // Find the end of this JSON object
+                var braceCount = 0;
+                var endPos = bracePos;
+                for (var i = bracePos; i < text.length; i++) {
+                    if (text[i] === '{') braceCount++;
+                    if (text[i] === '}') {
+                        braceCount--;
+                        if (braceCount === 0) {
+                            endPos = i;
+                            break;
+                        }
+                    }
+                }
+                try {
+                    return JSON.parse(text.substring(bracePos, endPos + 1));
+                } catch (e) {
+                    console.warn('[VisioFex] Method 1 failed:', e);
+                }
             }
         }
         
         // Method 2: Find last complete JSON object
         var lastBrace = text.lastIndexOf('}');
         if (lastBrace !== -1) {
-            // Work backwards to find the matching opening brace
             var braceCount = 0;
             var startPos = lastBrace;
             for (var i = lastBrace; i >= 0; i--) {
@@ -68,18 +84,10 @@
             }
         }
         
-        // Method 3: Original fallback
-        var jsonStart = text.indexOf('{');
-        if (jsonStart !== -1) {
-            try {
-                return JSON.parse(text.substring(jsonStart));
-            } catch (e) {
-                console.warn('[VisioFex] Method 3 failed:', e);
-            }
-        }
-        
         return null;
     }
+    
+    function extractRedirectUrl(responseData) {
         if (!responseData || !responseData.payment_result) {
             return null;
         }
@@ -106,20 +114,24 @@
             if (url && url.indexOf('/wc/store/v1/checkout') !== -1 && response.ok) {
                 response.clone().text().then(function(text) {
                     try {
-                        var jsonStart = text.indexOf('{');
-                        var jsonText = jsonStart !== -1 ? text.substring(jsonStart) : text;
-                        var data = JSON.parse(jsonText);
-                        var redirectUrl = extractRedirectUrl(data);
-                        
-                        if (redirectUrl) {
-                            setTimeout(function() {
-                                if (window.location.href.indexOf('checkout') !== -1) {
-                                    showRedirectFallback(redirectUrl);
-                                }
-                            }, 2000);
+                        var data = extractJsonFromResponse(text);
+                        if (data) {
+                            var redirectUrl = extractRedirectUrl(data);
+                            if (redirectUrl) {
+                                console.info('[VisioFex] Found redirect URL:', redirectUrl);
+                                setTimeout(function() {
+                                    if (window.location.href.indexOf('checkout') !== -1) {
+                                        showRedirectFallback(redirectUrl);
+                                    }
+                                }, 2000);
+                            } else {
+                                console.info('[VisioFex] No redirect URL in response');
+                            }
+                        } else {
+                            console.warn('[VisioFex] Could not extract JSON from response');
                         }
                     } catch (e) {
-                        console.warn('[VisioFex] Could not parse checkout response:', e);
+                        console.warn('[VisioFex] Error processing checkout response:', e);
                     }
                 }).catch(function() {
                     console.warn('[VisioFex] Could not read checkout response body');
@@ -130,42 +142,5 @@
         });
     };
     
-    var OriginalXHR = window.XMLHttpRequest;
-    var XHROpen = OriginalXHR.prototype.open;
-    var XHRSend = OriginalXHR.prototype.send;
-    
-    OriginalXHR.prototype.open = function(method, url) {
-        this._visiofexMonitor = url && url.toString().indexOf('/wc/store/v1/checkout') !== -1;
-        return XHROpen.apply(this, arguments);
-    };
-    
-    OriginalXHR.prototype.send = function(data) {
-        if (this._visiofexMonitor) {
-            this.addEventListener('readystatechange', function() {
-                if (this.readyState === 4 && this.status >= 200 && this.status < 300) {
-                    try {
-                        var responseText = this.responseText || '';
-                        var jsonStart = responseText.indexOf('{');
-                        var jsonText = jsonStart !== -1 ? responseText.substring(jsonStart) : responseText;
-                        var responseData = JSON.parse(jsonText);
-                        var redirectUrl = extractRedirectUrl(responseData);
-                        
-                        if (redirectUrl) {
-                            setTimeout(function() {
-                                if (window.location.href.indexOf('checkout') !== -1) {
-                                    showRedirectFallback(redirectUrl);
-                                }
-                            }, 2000);
-                        }
-                    } catch (e) {
-                        console.warn('[VisioFex] Could not parse XHR checkout response:', e);
-                    }
-                }
-            });
-        }
-        
-        return XHRSend.apply(this, arguments);
-    };
-    
-    console.info('[VisioFex] Redirect fallback system initialized');
+    console.info('[VisioFex] Enhanced redirect fallback system initialized');
 })();
