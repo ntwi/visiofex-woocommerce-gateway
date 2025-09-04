@@ -3,7 +3,7 @@ Contributors: your-company
 Tags: payments, checkout, woocommerce, visiofex, blocks, refunds
 Requires at least: 6.0
 Tested up to: 6.6
-Stable tag: 1.4.2
+Stable tag: 1.4.3
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -51,6 +51,13 @@ In wordpress (https://yoursite/wp-admin):
 - Save changes to enable the gateway
 
 == Changelog ==
+
+= 1.4.3 =
+* **MAJOR**: Simplified line items to single branded order total entry for cleaner customer experience
+* **ENHANCED**: Line item now displays as "[Store Name] Order Total" instead of complex per-product breakdown
+* **FIX**: Eliminates confusing tax calculation displays while maintaining VisioFex API compliance
+* **IMPROVED**: Cleaner, more professional appearance on VisioFex payment page
+* **MAINTAINED**: All existing functionality including coupon discounts, shipping, and refund processing
 
 = 1.4.2 =
 * **FIX**: Fixed line item display issue - product prices now show original amounts before discounts
