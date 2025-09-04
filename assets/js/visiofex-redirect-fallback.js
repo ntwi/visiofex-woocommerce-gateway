@@ -106,20 +106,19 @@
             if (url && url.indexOf('/wc/store/v1/checkout') !== -1 && response.ok) {
                 response.clone().text().then(function(text) {
                     try {
-                        var jsonStart = text.indexOf('{');
-                        var jsonText = jsonStart !== -1 ? text.substring(jsonStart) : text;
-                        var data = JSON.parse(jsonText);
-                        var redirectUrl = extractRedirectUrl(data);
-                        
-                        if (redirectUrl) {
-                            setTimeout(function() {
-                                if (window.location.href.indexOf('checkout') !== -1) {
-                                    showRedirectFallback(redirectUrl);
-                                }
-                            }, 2000);
+                        var data = extractJsonFromResponse(text);
+                        if (data) {
+                            var redirectUrl = extractRedirectUrl(data);
+                            if (redirectUrl) {
+                                setTimeout(function() {
+                                    if (window.location.href.indexOf('checkout') !== -1) {
+                                        showRedirectFallback(redirectUrl);
+                                    }
+                                }, 2000);
+                            }
                         }
                     } catch (e) {
-                        console.warn('[VisioFex] Could not parse checkout response:', e);
+                        console.warn('[VisioFex] Error processing checkout response:', e);
                     }
                 }).catch(function() {
                     console.warn('[VisioFex] Could not read checkout response body');
@@ -145,17 +144,16 @@
                 if (this.readyState === 4 && this.status >= 200 && this.status < 300) {
                     try {
                         var responseText = this.responseText || '';
-                        var jsonStart = responseText.indexOf('{');
-                        var jsonText = jsonStart !== -1 ? responseText.substring(jsonStart) : responseText;
-                        var responseData = JSON.parse(jsonText);
-                        var redirectUrl = extractRedirectUrl(responseData);
-                        
-                        if (redirectUrl) {
-                            setTimeout(function() {
-                                if (window.location.href.indexOf('checkout') !== -1) {
-                                    showRedirectFallback(redirectUrl);
-                                }
-                            }, 2000);
+                        var data = extractJsonFromResponse(responseText);
+                        if (data) {
+                            var redirectUrl = extractRedirectUrl(data);
+                            if (redirectUrl) {
+                                setTimeout(function() {
+                                    if (window.location.href.indexOf('checkout') !== -1) {
+                                        showRedirectFallback(redirectUrl);
+                                    }
+                                }, 2000);
+                            }
                         }
                     } catch (e) {
                         console.warn('[VisioFex] Could not parse XHR checkout response:', e);
@@ -167,5 +165,5 @@
         return XHRSend.apply(this, arguments);
     };
     
-    console.info('[VisioFex] Redirect fallback system initialized');
+    console.info('[VisioFex] Enhanced redirect fallback system initialized (fetch + XHR monitoring)');
 })();
