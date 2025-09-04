@@ -23,7 +23,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
  * Description: VisioFex/KonaCash hosted checkout for WooCommerce with refunds, Blocks support, and easy settings for keys, vendor id, and URLs.
  * Author:      NexaFlow Payments
  * Author URI:  https://nexaflowpayments.com
- * Version:     1.4.1
+ * Version:     1.4.2
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * WC requires at least: 7.0
@@ -513,13 +513,13 @@ add_action( 'plugins_loaded', function() {
             $line_items = array();
             $subtotal_check = 0.0;
 
-            // 1. Add product line items (using final totals after discounts)
+            // 1. Add product line items (using original prices before discounts)
             foreach ( $order->get_items() as $item_id => $item ) {
                 $name     = $item->get_name();
                 $qty      = $item->get_quantity();
-                $total    = floatval( $item->get_total() ); // After discounts and before tax
+                $subtotal = floatval( $item->get_subtotal() ); // Original price before discounts
                 
-                $unit_price = $qty > 0 ? $total / $qty : $total;
+                $unit_price = $qty > 0 ? $subtotal / $qty : $subtotal;
                 
                 if ( $qty > 0 && $unit_price >= 0 ) {
                     $line_items[] = array(
@@ -528,7 +528,7 @@ add_action( 'plugins_loaded', function() {
                         'quantity'    => (int) $qty,
                         'type'        => 'product'
                     );
-                    $subtotal_check += $total;
+                    $subtotal_check += $subtotal;
                 }
             }
 

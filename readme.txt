@@ -3,7 +3,7 @@ Contributors: your-company
 Tags: payments, checkout, woocommerce, visiofex, blocks, refunds
 Requires at least: 6.0
 Tested up to: 6.6
-Stable tag: 1.4.1
+Stable tag: 1.4.2
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -51,6 +51,11 @@ In wordpress (https://yoursite/wp-admin):
 - Save changes to enable the gateway
 
 == Changelog ==
+
+= 1.4.2 =
+* **FIX**: Fixed line item display issue - product prices now show original amounts before discounts
+* **FIX**: Eliminated confusing "Order Adjustment" line items caused by double-discount calculation
+* **ENHANCED**: Line items now display more clearly: products at original price, separate discount line items
 
 = 1.4.1 =
 * **FIX**: Fixed "back to store" button on VisioFex portal - now correctly returns to checkout page instead of order received page
