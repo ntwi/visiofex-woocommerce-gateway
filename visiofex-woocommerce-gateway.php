@@ -23,7 +23,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
  * Description: VisioFex/KonaCash hosted checkout for WooCommerce with refunds, Blocks support, and easy settings for keys, vendor id, and URLs.
  * Author:      NexaFlow Payments
  * Author URI:  https://nexaflowpayments.com
- * Version:     1.2.2
+ * Version:     1.2.3
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * WC requires at least: 7.0
@@ -77,7 +77,7 @@ add_action( 'wp_enqueue_scripts', function() {
             'visiofex-redirect-fallback',
             VXF_WC_PLUGIN_URL . 'assets/js/visiofex-redirect-fallback.js',
             array(),
-            '1.2.1',
+            '1.2.3',
             true
         );
     }

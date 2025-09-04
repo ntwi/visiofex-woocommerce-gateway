@@ -63,7 +63,9 @@
             if (url && url.indexOf('/wc/store/v1/checkout') !== -1 && response.ok) {
                 response.clone().text().then(function(text) {
                     try {
-                        var data = JSON.parse(text);
+                        var jsonStart = text.indexOf('{');
+                        var jsonText = jsonStart !== -1 ? text.substring(jsonStart) : text;
+                        var data = JSON.parse(jsonText);
                         var redirectUrl = extractRedirectUrl(data);
                         
                         if (redirectUrl) {
@@ -99,7 +101,10 @@
             this.addEventListener('readystatechange', function() {
                 if (this.readyState === 4 && this.status >= 200 && this.status < 300) {
                     try {
-                        var responseData = JSON.parse(this.responseText);
+                        var responseText = this.responseText || '';
+                        var jsonStart = responseText.indexOf('{');
+                        var jsonText = jsonStart !== -1 ? responseText.substring(jsonStart) : responseText;
+                        var responseData = JSON.parse(jsonText);
                         var redirectUrl = extractRedirectUrl(responseData);
                         
                         if (redirectUrl) {
