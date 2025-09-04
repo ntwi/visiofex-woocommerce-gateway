@@ -510,104 +510,29 @@ add_action( 'plugins_loaded', function() {
          * Build comprehensive line items including products, coupons, shipping, fees, and taxes
          */
         private function build_line_items( $order ) {
-            $line_items = array();
-            $subtotal_check = 0.0;
-
-            // 1. Add product line items (using original prices before discounts)
-            foreach ( $order->get_items() as $item_id => $item ) {
-                $name     = $item->get_name();
-                $qty      = $item->get_quantity();
-                $subtotal = floatval( $item->get_subtotal() ); // Original price before discounts
-                
-                $unit_price = $qty > 0 ? $subtotal / $qty : $subtotal;
-                
-                if ( $qty > 0 && $unit_price >= 0 ) {
-                    $line_items[] = array(
-                        'productName' => $name,
-                        'unitPrice'   => number_format( $unit_price, 2, '.', '' ),
-                        'quantity'    => (int) $qty,
-                        'type'        => 'product'
-                    );
-                    $subtotal_check += $subtotal;
-                }
-            }
-
-            // 2. Add coupon discounts as negative line items
-            foreach ( $order->get_coupons() as $coupon_item_id => $coupon_item ) {
-                $coupon_code = $coupon_item->get_code();
-                $discount_amount = abs( floatval( $coupon_item->get_discount() ) );
-                $discount_tax = abs( floatval( $coupon_item->get_discount_tax() ) );
-                $total_discount = $discount_amount + $discount_tax;
-                
-                if ( $total_discount > 0 ) {
-                    $line_items[] = array(
-                        'productName' => 'Discount: ' . $coupon_code,
-                        'unitPrice'   => '-' . number_format( $total_discount, 2, '.', '' ),
-                        'quantity'    => 1,
-                        'type'        => 'discount'
-                    );
-                    $subtotal_check -= $total_discount;
-                }
-            }
-
-            // 3. Add shipping costs
-            foreach ( $order->get_shipping_methods() as $shipping_item_id => $shipping_item ) {
-                $shipping_method = $shipping_item->get_method_title();
-                $shipping_cost = floatval( $shipping_item->get_total() );
-                $shipping_tax = floatval( $shipping_item->get_total_tax() );
-                $total_shipping = $shipping_cost + $shipping_tax;
-                
-                if ( $total_shipping > 0 ) {
-                    $line_items[] = array(
-                        'productName' => 'Shipping: ' . $shipping_method,
-                        'unitPrice'   => number_format( $total_shipping, 2, '.', '' ),
-                        'quantity'    => 1,
-                        'type'        => 'shipping'
-                    );
-                    $subtotal_check += $total_shipping;
-                }
-            }
-
-            // 4. Add fees (if any)
-            foreach ( $order->get_fees() as $fee_item_id => $fee_item ) {
-                $fee_name = $fee_item->get_name();
-                $fee_amount = floatval( $fee_item->get_total() );
-                $fee_tax = floatval( $fee_item->get_total_tax() );
-                $total_fee = $fee_amount + $fee_tax;
-                
-                if ( $total_fee != 0 ) {
-                    $line_items[] = array(
-                        'productName' => 'Fee: ' . $fee_name,
-                        'unitPrice'   => number_format( $total_fee, 2, '.', '' ),
-                        'quantity'    => 1,
-                        'type'        => 'fee'
-                    );
-                    $subtotal_check += $total_fee;
-                }
-            }
-
-            // 5. Add any remaining tax (if not included in line items above)
-            $item_taxes = 0.0;
-            foreach ( $order->get_items() as $item ) {
-                $item_taxes += floatval( $item->get_total_tax() );
-            }
+            $this->log( 'Using simplified single line item approach' );
             
-            $total_tax = floatval( $order->get_total_tax() );
-            $remaining_tax = $total_tax - $item_taxes;
+            $order_total = floatval( $order->get_total() );
+            $order_id = $order->get_id();
             
-            if ( $remaining_tax > 0.01 ) { // Only add if significant
-                $line_items[] = array(
-                    'productName' => 'Additional Tax',
-                    'unitPrice'   => number_format( $remaining_tax, 2, '.', '' ),
+            // Create one simple line item with the total order amount
+            $store_name = get_bloginfo( 'name' );
+            $product_name = $store_name ? $store_name . ' Order Total' : 'Order Total';
+            
+            $line_items = array(
+                array(
+                    'productName' => $product_name,
+                    'unitPrice'   => number_format( $order_total, 2, '.', '' ),
                     'quantity'    => 1,
-                    'type'        => 'tax'
-                );
-                $subtotal_check += $remaining_tax;
-            }
-
+                    'type'        => 'order'
+                )
+            );
+            
+            $this->log( 'Created single line item - Order #' . $order_id . ': $' . $order_total );
+            
             return array(
                 'line_items' => $line_items,
-                'calculated_total' => round( $subtotal_check, 2 )
+                'calculated_total' => $order_total
             );
         }
 
@@ -642,35 +567,8 @@ add_action( 'plugins_loaded', function() {
             $calculated_total = $line_item_result['calculated_total'];
             $order_total = floatval( $order->get_total() );
             
-            $this->log( 'Built comprehensive line items - Count: ' . count( $line_items ) . ', Products: ' . count( $order->get_items() ) . ', Coupons: ' . count( $order->get_coupons() ) . ', Shipping: ' . count( $order->get_shipping_methods() ) );
-            $this->log( 'Order totals - WC Total: ' . $order_total . ', Calculated: ' . $calculated_total . ', Match: ' . ( abs( $order_total - $calculated_total ) < 0.01 ? 'yes' : 'no' ) );
+            $this->log( 'Testing empty line items approach - Line items count: ' . count( $line_items ) . ', WC Total: ' . $order_total );
             
-            if ( $this->logging ) {
-                // Log sample line items for debugging (first 3 items)
-                $sample_items = array_slice( $line_items, 0, 3 );
-                foreach ( $sample_items as $idx => $item ) {
-                    $this->log( 'Line item ' . ($idx + 1) . ': ' . $item['productName'] . ' - ' . $item['unitPrice'] . ' x ' . $item['quantity'] . ' (' . $item['type'] . ')', 'debug' );
-                }
-                if ( count( $line_items ) > 3 ) {
-                    $this->log( '... and ' . (count( $line_items ) - 3) . ' more line items', 'debug' );
-                }
-            }
-            // Validate total matching and add adjustment if needed
-            $total_difference = abs( $order_total - $calculated_total );
-            if ( $total_difference > 0.01 ) {
-                $this->log( 'Total mismatch detected - Adding adjustment: ' . ( $order_total - $calculated_total ), 'warning' );
-                
-                // Add adjustment line item to match WooCommerce total exactly
-                $adjustment = $order_total - $calculated_total;
-                $line_items[] = array(
-                    'productName' => 'Order Adjustment',
-                    'unitPrice'   => number_format( $adjustment, 2, '.', '' ),
-                    'quantity'    => 1,
-                    'type'        => 'adjustment'
-                );
-                $calculated_total = $order_total;
-            }
-
             $order_key = $order->get_order_key();
             $success   = $this->store_domain . '/checkout/order-received/' . $order->get_id() . '/?key=' . $order_key;
             $return    = $this->store_domain . '/checkout/';
