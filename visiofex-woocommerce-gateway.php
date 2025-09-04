@@ -856,20 +856,6 @@ add_action( 'plugins_loaded', function() {
                 return new WP_Error( 'refund_failed', 'Refund failed: ' . $error_msg );
             }
         }
-                } elseif ( $code === 401 ) {
-                    $error_msg = 'Authentication failed';
-                } elseif ( $code === 403 ) {
-                    $error_msg = 'Access forbidden';
-                } elseif ( $code === 404 ) {
-                    $error_msg = 'Payment not found';
-                } elseif ( $code >= 500 ) {
-                    $error_msg = 'Server error';
-                }
-
-                $order->add_order_note( sprintf( 'VisioFex refund failed: %s (HTTP %d)', $error_msg, $code ) );
-                return new WP_Error( 'refund_failed', $error_msg );
-            }
-        }
 
     // Webhook endpoint removed in simplified plugin
 
