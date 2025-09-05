@@ -9,19 +9,86 @@
   const Label = () => {
     const el = window.wp.element;
     const children = [];
+    
+    // VisioFex logo
     if (settings.icon) {
       children.push(el.createElement('img', {
         src: settings.icon,
-        alt: settings.title || 'VisioFex',
-        style: { height: '18px', verticalAlign: 'middle', marginRight: '6px' }
+        alt: 'VisioFex',
+        className: 'visiofex-logo',
+        style: { verticalAlign: 'middle', marginRight: '8px' }
       }));
     }
-    children.push(settings.title || 'VisioFex Pay');
-    return el.createElement('span', null, ...children);
+
+    // Title
+    children.push(el.createElement('span', { 
+      style: { verticalAlign: 'middle', marginRight: '8px' }
+    }, settings.title || 'Secure Payment'));
+    
+  // Card brand icons container
+  const cardIcons = [];
+    
+    // Visa icon
+    cardIcons.push(el.createElement('img', {
+      key: 'visa',
+      src: settings.pluginUrl + '/assets/images/visa.svg',
+      alt: 'Visa',
+      className: 'visiofex-card-icon',
+      style: { marginLeft: '8px', marginRight: '2px', verticalAlign: 'middle' }
+    }));
+    
+    // Mastercard icon  
+    cardIcons.push(el.createElement('img', {
+      key: 'mastercard',
+      src: settings.pluginUrl + '/assets/images/mastercard.svg',
+      alt: 'Mastercard',
+      className: 'visiofex-card-icon',
+      style: { marginRight: '2px', verticalAlign: 'middle' }
+    }));
+    
+    // Amex icon
+    cardIcons.push(el.createElement('img', {
+      key: 'amex',
+      src: settings.pluginUrl + '/assets/images/amex.svg',
+      alt: 'American Express',
+      className: 'visiofex-card-icon',
+      style: { marginRight: '2px', verticalAlign: 'middle' }
+    }));
+    
+    // Discover icon
+    cardIcons.push(el.createElement('img', {
+      key: 'discover',
+      src: settings.pluginUrl + '/assets/images/discover.svg',
+      alt: 'Discover',
+      className: 'visiofex-card-icon',
+      style: { verticalAlign: 'middle' }
+    }));
+    
+    children.push(el.createElement('span', {
+      className: 'visiofex-card-icons',
+      style: { marginLeft: '8px', verticalAlign: 'middle' }
+    }, ...cardIcons));
+    
+    return el.createElement('div', { 
+      style: { display: 'flex', alignItems: 'center' }
+    }, ...children);
   };
 
-  const Content = () =>
-    settings.description ? window.wp.element.createElement('div', null, settings.description) : null;
+  const Content = () => {
+    const el = window.wp.element;
+    const raw = (settings.description || '').toString();
+
+    // Strip any HTML tags the merchant may have entered, we control formatting ourselves
+    const desc = raw.replace(/<[^>]*>/g, '');
+    if (!desc) return null;
+    
+    const [lead, ...restParts] = desc.trim().split(/\r?\n+/);
+    const leadEl = el.createElement('strong', null, lead || '');
+    const restText = restParts.join(' ').trim();
+    const restEl = restText ? el.createElement('span', { style: { display: 'block', marginTop: '8px' } }, restText) : null;
+    
+    return el.createElement('div', null, leadEl, restEl);
+  };
 
   registerPaymentMethod({
     name: 'visiofex',

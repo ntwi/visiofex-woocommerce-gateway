@@ -1,0 +1,49 @@
+/* VisioFex Payment Gateway Card Icons */
+.visiofex-title-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.visiofex-logo {
+    max-height: 42px;
+    width: auto;
+}
+
+.visiofex-payment-title {
+    font-weight: 500;
+}
+
+.visiofex-card-icons {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    opacity: 1;
+}
+
+.visiofex-card-icon {
+    height: 32px;
+    width: auto;
+    /* No extra borders/shadows; just the icon itself */
+}
+
+.visiofex-card-icon svg {
+    display: block;
+    height: 100%;
+    width: auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .visiofex-title-wrapper {
+        gap: 6px;
+    }
+    
+    .visiofex-logo {
+    max-height: 32px;
+    }
+    
+    .visiofex-card-icon {
+    height: 28px;
+    }
+}

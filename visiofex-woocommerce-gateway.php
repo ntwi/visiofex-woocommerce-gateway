@@ -23,7 +23,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
  * Description: VisioFex/KonaCash hosted checkout for WooCommerce with refunds, Blocks support, and easy settings for keys, vendor id, and URLs.
  * Author:      NexaFlow Payments
  * Author URI:  https://nexaflowpayments.com
- * Version:     1.4.2
+ * Version:     1.4.4
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * WC requires at least: 7.0
@@ -34,7 +34,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'VXF_WC_VERSION', '1.4.3' );
+define( 'VXF_WC_VERSION', '1.4.4' );
 define( 'VXF_WC_PLUGIN_FILE', __FILE__ );
 define( 'VXF_WC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'VXF_WC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -100,8 +100,8 @@ add_action( 'plugins_loaded', function() {
 
         public function __construct() {
             $this->id                 = 'visiofex';
-            // Use the icon property — Woo renders this properly as an <img>
-            $this->icon = VXF_WC_PLUGIN_URL . 'assets/visiofex-logo.png';//plugins_url( 'assets/visiofex-logo.png', __FILE__ );
+            // Keep basic icon for settings page, we'll enhance the checkout display with get_icon()
+            $this->icon = VXF_WC_PLUGIN_URL . 'assets/visiofex-logo.png';
             // No on-page fields; we redirect to hosted checkout
             $this->has_fields = false;
             $this->method_title       = __( 'VisioFex Pay', 'visiofex-woocommerce' );
@@ -113,7 +113,7 @@ add_action( 'plugins_loaded', function() {
 
             // Settings values with top-of-file defaults as fallback
             $this->enabled        = $this->get_option( 'enabled', 'no' );
-            $this->title          = $this->get_option( 'title', 'VisioFex Pay' );
+            $this->title          = $this->get_option( 'title', 'Secure Payment' );
             $this->description    = $this->get_option( 'description', '' );
             $this->testmode       = 'yes' === $this->get_option( 'testmode', VXF_DEFAULT_TESTMODE ? 'yes' : 'no' );
             $this->secret_key     = $this->get_option( 'secret_key', VXF_DEFAULT_SECRET_KEY );
@@ -129,6 +129,61 @@ add_action( 'plugins_loaded', function() {
             // add_action( 'woocommerce_api_wc_gateway_visiofex', array( $this, 'handle_webhook' ) );
             add_action( 'woocommerce_thankyou_' . $this->id, array( $this, 'vxf_capture_transaction_on_return' ), 10, 1 );
 
+            // Enqueue our custom CSS for enhanced payment icons
+            add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_payment_icons_css' ) );
+
+            // Render description with bold lead in Classic checkout without requiring HTML in settings
+            add_filter( 'woocommerce_gateway_description', array( $this, 'filter_gateway_description' ), 10, 2 );
+        }
+
+        /**
+         * Enqueue custom CSS for enhanced payment icons display
+         */
+        public function enqueue_payment_icons_css() {
+            if ( is_checkout() ) {
+                wp_enqueue_style( 
+                    'visiofex-payment-icons', 
+                    VXF_WC_PLUGIN_URL . 'assets/css/visiofex-payment-icons.css', 
+                    array(), 
+                    VXF_WC_VERSION 
+                );
+            }
+        }
+
+        public function get_title() {
+            // For admin/order pages, use simple text
+            if ( is_admin() || is_account_page() ) {
+                return __( 'VisioFex', 'visiofex-woocommerce' );
+            }
+            
+            // For checkout pages, use enhanced title with logo
+            if ( is_checkout() ) {
+                $title = $this->get_option( 'title', __( 'Secure Payment', 'visiofex-woocommerce' ) );
+                $logo_url = esc_url( VXF_WC_PLUGIN_URL . 'assets/visiofex-logo.png' );
+                
+                $title_html = '<span class="visiofex-title-wrapper">';
+                $title_html .= '<img class="visiofex-logo" src="' . $logo_url . '" alt="VisioFex" />';
+                $title_html .= '<span class="visiofex-payment-title">' . esc_html( $title ) . '</span>';
+                $title_html .= '</span>';
+
+                return apply_filters( 'woocommerce_gateway_title', $title_html, $this->id );
+            }
+            
+            // Default fallback
+            return $this->get_option( 'title', __( 'Secure Payment', 'visiofex-woocommerce' ) );
+        }
+
+        /**
+         * Override the icon display to show just the card brands, as the logo is now in the title.
+         */
+        public function get_icon() {
+            $icon_html  = '<span class="visiofex-card-icons">';
+            $icon_html .= '<img class="visiofex-card-icon" src="' . esc_url( VXF_WC_PLUGIN_URL . 'assets/images/visa.svg' ) . '" alt="Visa" />';
+            $icon_html .= '<img class="visiofex-card-icon" src="' . esc_url( VXF_WC_PLUGIN_URL . 'assets/images/mastercard.svg' ) . '" alt="Mastercard" />';
+            $icon_html .= '<img class="visiofex-card-icon" src="' . esc_url( VXF_WC_PLUGIN_URL . 'assets/images/amex.svg' ) . '" alt="American Express" />';
+            $icon_html .= '<img class="visiofex-card-icon" src="' . esc_url( VXF_WC_PLUGIN_URL . 'assets/images/discover.svg' ) . '" alt="Discover" />';
+            $icon_html .= '</span>';
+            return apply_filters( 'woocommerce_gateway_icon', $icon_html, $this->id );
         }
 
         public function init_form_fields() {
@@ -142,13 +197,13 @@ add_action( 'plugins_loaded', function() {
                 'title' => array(
                     'title'       => __( 'Title', 'visiofex-woocommerce' ),
                     'type'        => 'text',
-                    'default'     => __( 'VisioFex Pay', 'visiofex-woocommerce' ),
+                    'default'     => __( 'Secure Payment', 'visiofex-woocommerce' ),
                     'desc_tip'    => true,
                 ),
                 'description' => array(
                     'title'       => __( 'Description', 'visiofex-woocommerce' ),
                     'type'        => 'textarea',
-                    'default'     => __( 'Pay securely with VisioFex. Please ensure that pop-ups are enabled. Once you click "Place Order" the payment will be processed securely through our payment gateway. This is linked to our merchant account.', 'visiofex-woocommerce' ),
+                    'default'     => __( "Pay securely with your credit or debit card through VisioFex.\nAfter clicking \"Place Order\", you’ll be redirected to our secure payment page. Please make sure your browser allows pop-ups so the payment window can open smoothly.", 'visiofex-woocommerce' ),
                     'description' => __( 'This text will be displayed to customers during checkout.', 'visiofex-woocommerce' ),
                 ),
                 'testmode' => array(
@@ -181,6 +236,48 @@ add_action( 'plugins_loaded', function() {
                     'default'     => 'yes',
                 ),
             );
+        }
+
+        /**
+         * Format gateway description for Classic checkout: bold first line, rest normal.
+         */
+        public function filter_gateway_description( $description, $payment_id ) {
+            if ( $payment_id !== $this->id ) {
+                return $description;
+            }
+            
+            // Use saved setting, but fall back to the default if it's empty.
+            $plain = (string) $this->get_option( 'description' );
+            if ( trim( $plain ) === '' ) {
+                $plain = $this->form_fields['description']['default'];
+            }
+
+            $html  = $this->format_description_html( $plain );
+            return $html;
+        }
+
+        /**
+         * Build safe HTML with <strong> for the first line and normal text for the rest.
+         */
+        private function format_description_html( $text ) {
+            // Strip any HTML tags the user might have entered, as we handle formatting.
+            $text  = is_string( $text ) ? wp_strip_all_tags( $text ) : '';
+            
+            $parts = preg_split( "/\r?\n+/", trim( $text ), 2 );
+            
+            if ( ! is_array( $parts ) || empty( $parts ) || trim($parts[0]) === '' ) {
+                return '';
+            }
+
+            $lead = esc_html( trim( $parts[0] ) );
+            $rest = isset( $parts[1] ) ? esc_html( trim( $parts[1] ) ) : '';
+
+            $html = '<strong>' . $lead . '</strong>';
+            if ( $rest !== '' ) {
+                $html .= '<br />' . $rest;
+            }
+            
+            return $html;
         }
 
         protected function get_api_base() {

@@ -3,7 +3,7 @@ Contributors: your-company
 Tags: payments, checkout, woocommerce, visiofex, blocks, refunds
 Requires at least: 6.0
 Tested up to: 6.6
-Stable tag: 1.4.3
+Stable tag: 1.4.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -51,6 +51,19 @@ In wordpress (https://yoursite/wp-admin):
 - Save changes to enable the gateway
 
 == Changelog ==
+
+= 1.4.4 =
+* **NEW**: Enhanced checkout UI with professional card brand icons (Visa, Mastercard, Amex, Discover)
+* **NEW**: Dynamic payment method branding - VisioFex logo with "Secure Payment" text on checkout
+* **NEW**: Context-aware title display - shows "VisioFex" in admin/orders, enhanced branding on checkout
+* **NEW**: Professional SVG card icons for crisp display across all devices and screen sizes
+* **NEW**: Rich text description formatting - first line automatically bolded without HTML editing
+* **ENHANCED**: Responsive icon sizing for optimal display on desktop and mobile devices
+* **ENHANCED**: Clean admin display - removed HTML formatting from order pages for better readability
+* **ENHANCED**: Improved CSS organization with streamlined, maintainable stylesheet
+* **FIX**: Fixed description fallback when settings field is left empty - now properly shows default text
+* **FIX**: Consistent branding between classic checkout and WooCommerce Blocks checkout
+* **IMPROVED**: Visual hierarchy with VisioFex logo prominently displayed alongside payment title
 
 = 1.4.3 =
 * **MAJOR**: Simplified line items to single branded order total entry for cleaner customer experience
