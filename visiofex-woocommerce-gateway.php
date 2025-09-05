@@ -154,29 +154,9 @@ add_action( 'plugins_loaded', function() {
         }
 
         public function get_title() {
-            // Debug logging to see when and how this method is called
-            if ( $this->logging ) {
-                $context = array(
-                    'is_admin' => is_admin(),
-                    'is_checkout' => is_checkout(),
-                    'wp_doing_ajax' => wp_doing_ajax(),
-                    'rest_request' => defined( 'REST_REQUEST' ),
-                    'is_wc_endpoint' => is_wc_endpoint_url(),
-                    'wc_ajax' => isset( $_REQUEST['wc-ajax'] ),
-                    'doing_cron' => defined( 'DOING_CRON' ) && DOING_CRON,
-                    'is_account_page' => is_account_page(),
-                    'current_screen' => function_exists( 'get_current_screen' ) ? get_current_screen() : null,
-                );
-                $this->log( 'get_title() called - Context: ' . wp_json_encode( $context ) );
-            }
-            
             // Check if we're on the specific checkout page for payment method selection
             if ( is_checkout() && ! is_admin() && ! wp_doing_ajax() && ! is_wc_endpoint_url() && ! isset( $_REQUEST['wc-ajax'] ) ) {
                 // Only show enhanced title with logo on the main checkout page for payment method selection
-                if ( $this->logging ) {
-                    $this->log( 'get_title() returning enhanced HTML title for checkout' );
-                }
-                
                 $title = $this->get_option( 'title', __( 'Secure Payment', 'visiofex-woocommerce' ) );
                 $logo_url = esc_url( VXF_WC_PLUGIN_URL . 'assets/visiofex-logo.png' );
                 
@@ -189,9 +169,6 @@ add_action( 'plugins_loaded', function() {
             }
             
             // For all other contexts (admin, order pages, emails, etc.), return simple "VisioFex"
-            if ( $this->logging ) {
-                $this->log( 'get_title() returning simple "VisioFex"' );
-            }
             return __( 'VisioFex', 'visiofex-woocommerce' );
         }
 
@@ -199,21 +176,7 @@ add_action( 'plugins_loaded', function() {
          * Override method title to ensure consistent display
          */
         public function get_method_title() {
-            // Debug logging to see when and how this method is called
-            if ( $this->logging ) {
-                $context = array(
-                    'is_admin' => is_admin(),
-                    'is_checkout' => is_checkout(),
-                    'wp_doing_ajax' => wp_doing_ajax(),
-                    'current_screen' => function_exists( 'get_current_screen' ) ? get_current_screen() : null,
-                );
-                $this->log( 'get_method_title() called - Context: ' . wp_json_encode( $context ) );
-            }
-            
             // Always return simple "VisioFex" - we don't want "VisioFex Pay" showing anywhere
-            if ( $this->logging ) {
-                $this->log( 'get_method_title() returning "VisioFex"' );
-            }
             return __( 'VisioFex', 'visiofex-woocommerce' );
         }
 
@@ -683,29 +646,22 @@ add_action( 'plugins_loaded', function() {
             $this->log( 'Order sync completed for order #' . $order->get_id() );
 }
         public function is_available() {
-            $this->log( 'Checking gateway availability - Enabled: ' . $this->enabled . ', SSL: ' . ( is_ssl() ? 'yes' : 'no' ) . ', Test mode: ' . ( $this->testmode ? 'yes' : 'no' ) );
-            
             if ( 'yes' !== $this->enabled ) { 
-                $this->log( 'Gateway not available: Disabled in settings', 'debug' );
                 return false; 
             }
             
             if ( ! is_ssl() && ! $this->testmode ) { 
-                $this->log( 'Gateway not available: SSL required for live mode', 'debug' );
                 return false; 
             }
             
             // Allow showing in test mode even if keys are empty (helps setup); in live require a key
             if ( empty( $this->secret_key ) ) {
                 if ( $this->testmode ) { 
-                    $this->log( 'Gateway available in test mode without secret key', 'debug' );
                     return true; 
                 }
-                $this->log( 'Gateway not available: Secret key required for live mode', 'debug' );
                 return false;
             }
             
-            $this->log( 'Gateway available - All requirements met', 'debug' );
             return true;
         }
 
