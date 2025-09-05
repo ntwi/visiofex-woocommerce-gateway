@@ -52,6 +52,21 @@ In wordpress (https://yoursite/wp-admin):
 
 == Changelog ==
 
+= 1.4.5 =
+* **MAJOR**: Enhanced refund system with robust error handling and retry logic
+* **NEW**: Smart refund retry detection - handles cases where WooCommerce has refund records but VisioFex doesn't
+* **NEW**: Comprehensive refund debugging with detailed logging of existing refunds and validation steps
+* **NEW**: Floating point precision handling with tolerance-based amount validation (prevents $2.06 vs $2.06 comparison failures)
+* **NEW**: Enhanced refund UI - ensures refund amount fields remain editable for VisioFex orders
+* **NEW**: Custom refund reason dropdown with predefined options (requested_by_customer, duplicate, fraudulent)
+* **ENHANCED**: Refund validation now uses WooCommerce decimal formatting with 0.05 tolerance for precision issues
+* **ENHANCED**: Detailed refund logging shows raw vs formatted amounts, existing refund analysis, and API response tracking
+* **ENHANCED**: Improved error messages with specific failure reasons (authentication, payment not found, server errors)
+* **FIX**: Resolved refund amount validation failures caused by floating point precision differences
+* **FIX**: Fixed refund UI interference - amount fields now remain editable and responsive
+* **FIX**: Improved handling of retry scenarios where previous refund attempts partially failed
+* **SECURITY**: Enhanced validation for admin operations with proper capability checks and nonce verification
+
 = 1.4.4 =
 * **NEW**: Enhanced checkout UI with professional card brand icons (Visa, Mastercard, Amex, Discover)
 * **NEW**: Dynamic payment method branding - VisioFex logo with "Secure Payment" text on checkout

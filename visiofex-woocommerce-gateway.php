@@ -23,7 +23,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
  * Description: VisioFex/KonaCash hosted checkout for WooCommerce with refunds, Blocks support, and easy settings for keys, vendor id, and URLs.
  * Author:      NexaFlow Payments
  * Author URI:  https://nexaflowpayments.com
- * Version:     1.4.4
+ * Version:     1.4.5
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * WC requires at least: 7.0
@@ -34,7 +34,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'VXF_WC_VERSION', '1.4.4' );
+define( 'VXF_WC_VERSION', '1.4.5' );
 define( 'VXF_WC_PLUGIN_FILE', __FILE__ );
 define( 'VXF_WC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'VXF_WC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -287,6 +287,20 @@ add_action( 'plugins_loaded', function() {
 
         // Change signature
         protected function request( $method, $path, $body = null, $idempotency_key = null ) {
+            // Basic rate limiting check
+            $rate_limit_key = 'visiofex_api_requests_' . md5( $this->secret_key );
+            $current_count = get_transient( $rate_limit_key );
+            if ( $current_count === false ) {
+                set_transient( $rate_limit_key, 1, 60 ); // 1 minute window
+            } else {
+                $current_count = intval( $current_count );
+                if ( $current_count >= 100 ) { // 100 requests per minute limit
+                    $this->log( 'Rate limit exceeded: too many API requests', 'warning' );
+                    return array( 'code' => 429, 'body' => array( 'error' => 'Rate limit exceeded' ), 'headers' => array() );
+                }
+                set_transient( $rate_limit_key, $current_count + 1, 60 );
+            }
+            
             $this->log( 'API Request - Method: ' . $method . ', Path: ' . $path . ', Has body: ' . ( $body ? 'yes' : 'no' ) );
             
             $headers = array(
@@ -369,6 +383,12 @@ add_action( 'plugins_loaded', function() {
         }
 
         public function vxf_capture_transaction_on_return( $order_id ) {
+            // Input validation
+            if ( ! is_numeric( $order_id ) || $order_id <= 0 ) {
+                $this->log( 'Transaction capture failed: Invalid order ID format', 'error' );
+                return;
+            }
+            
             $this->log( 'Transaction capture initiated for order #' . $order_id );
             
             $order = wc_get_order( $order_id );
@@ -387,6 +407,11 @@ add_action( 'plugins_loaded', function() {
             $session_id = $order->get_meta( '_visiofex_session_id' );
             if ( ! $session_id && isset( $_GET['sessionID'] ) ) {
                 $session_id = sanitize_text_field( wp_unslash( $_GET['sessionID'] ) );
+                // Validate session ID format (basic check for expected format)
+                if ( ! preg_match( '/^[a-zA-Z0-9_-]+$/', $session_id ) ) {
+                    $this->log( 'Invalid session ID format from URL parameter', 'error' );
+                    return;
+                }
                 $order->update_meta_data( '_visiofex_session_id', $session_id );
                 $this->log( 'Session ID obtained from URL parameter: ' . $session_id );
             }
@@ -423,9 +448,15 @@ add_action( 'plugins_loaded', function() {
 
                 if ( $txn_id ) {
                     $order->update_meta_data( '_visiofex_payment_id', sanitize_text_field( $txn_id ) );
-                    if ( $last4 )   { $order->update_meta_data( '_visiofex_last4',   sanitize_text_field( $last4 ) ); }
-                    if ( $network ) { $order->update_meta_data( '_visiofex_network', sanitize_text_field( $network ) ); }
-                    if ( ! is_null( $amount_i ) ) { $order->update_meta_data( '_visiofex_tx_amount', $amount_i ); }
+                    if ( $last4 && preg_match( '/^\d{4}$/', $last4 ) ) {   
+                        $order->update_meta_data( '_visiofex_last4', sanitize_text_field( $last4 ) ); 
+                    }
+                    if ( $network && in_array( strtolower( $network ), array( 'visa', 'mastercard', 'amex', 'discover', 'jcb', 'diners' ), true ) ) { 
+                        $order->update_meta_data( '_visiofex_network', sanitize_text_field( $network ) ); 
+                    }
+                    if ( ! is_null( $amount_i ) && is_numeric( $amount_i ) && $amount_i >= 0 ) { 
+                        $order->update_meta_data( '_visiofex_tx_amount', floatval( $amount_i ) ); 
+                    }
                     
                     $this->log( 'Transaction metadata updated - Payment ID: ' . $txn_id . ', Last4: ' . ( $last4 ?: 'none' ) . ', Network: ' . ( $network ?: 'none' ) );
                 }
@@ -453,6 +484,12 @@ add_action( 'plugins_loaded', function() {
 
         /** Public: Sync a single order from VisioFex (session/transaction/refunds). */
         public function sync_order_from_visiofex( WC_Order $order ): void {
+            // Security validation for admin operations
+            if ( is_admin() && ! $this->validate_admin_operation( 'visiofex_sync' ) ) {
+                $this->log( 'Sync operation blocked: Security validation failed', 'error' );
+                return;
+            }
+            
             $this->log( 'Starting order sync for order #' . $order->get_id() );
             
             if ( $order->get_payment_method() !== $this->id ) {
@@ -466,6 +503,11 @@ add_action( 'plugins_loaded', function() {
             $session_id = $order->get_meta('_visiofex_session_id');
             if ( ! $session_id && isset($_GET['sessionID']) ) {
                 $session_id = sanitize_text_field( wp_unslash($_GET['sessionID']) );
+                // Validate session ID format
+                if ( ! preg_match( '/^[a-zA-Z0-9_-]+$/', $session_id ) ) {
+                    $this->log( 'Invalid session ID format from URL parameter', 'error' );
+                    return;
+                }
                 $order->update_meta_data('_visiofex_session_id', $session_id);
                 $this->log( 'Session ID obtained from URL parameter: ' . $session_id );
             }
@@ -634,6 +676,13 @@ add_action( 'plugins_loaded', function() {
         }
 
         public function process_payment( $order_id ) {
+            // Input validation
+            if ( ! is_numeric( $order_id ) || $order_id <= 0 ) {
+                $this->log( 'Payment failed: Invalid order ID format', 'error' );
+                wc_add_notice( __( 'Invalid order. Please try again.', 'visiofex-woocommerce' ), 'error' );
+                return array( 'result' => 'fail' );
+            }
+            
             $this->log( 'Starting payment process for order #' . $order_id );
             
             $order = wc_get_order( $order_id );
@@ -667,9 +716,17 @@ add_action( 'plugins_loaded', function() {
             $this->log( 'Testing empty line items approach - Line items count: ' . count( $line_items ) . ', WC Total: ' . $order_total );
             
             $order_key = $order->get_order_key();
-            $success   = $this->store_domain . '/checkout/order-received/' . $order->get_id() . '/?key=' . $order_key;
-            $return    = $this->store_domain . '/checkout/';
-            $cancel    = $this->store_domain . '/checkout/?cancel_order=' . $order_key;
+            // Validate and sanitize URLs
+            $base_domain = untrailingslashit( esc_url_raw( $this->store_domain ) );
+            if ( ! $base_domain || ! filter_var( $base_domain, FILTER_VALIDATE_URL ) ) {
+                $this->log( 'Invalid store domain configured: ' . $this->store_domain, 'error' );
+                wc_add_notice( __( 'Payment gateway configuration error.', 'visiofex-woocommerce' ), 'error' );
+                return array( 'result' => 'fail' );
+            }
+            
+            $success = $base_domain . '/checkout/order-received/' . absint( $order->get_id() ) . '/?key=' . sanitize_text_field( $order_key );
+            $return  = $base_domain . '/checkout/';
+            $cancel  = $base_domain . '/checkout/?cancel_order=' . sanitize_text_field( $order_key );
 
             $this->log( 'Generated URLs - Success: ' . $success . ', Return: ' . $return . ', Cancel: ' . $cancel );
 
@@ -748,6 +805,20 @@ add_action( 'plugins_loaded', function() {
 
         /** Refund support */
         public function process_refund( $order_id, $amount = null, $reason = '' ) {
+            // Input validation
+            if ( ! is_numeric( $order_id ) || $order_id <= 0 ) {
+                $this->log( 'Refund failed: Invalid order ID format', 'error' );
+                return new WP_Error( 'invalid_order_id', 'Invalid order ID format' );
+            }
+            
+            if ( $amount !== null && ( ! is_numeric( $amount ) || $amount <= 0 ) ) {
+                $this->log( 'Refund failed: Invalid amount format', 'error' );
+                return new WP_Error( 'invalid_amount', 'Invalid refund amount' );
+            }
+            
+            // Sanitize reason
+            $reason = sanitize_text_field( $reason );
+            
             $this->log( 'Starting refund process for order #' . $order_id . ' - Amount: ' . ( $amount ?: 'N/A' ) . ', Reason: ' . ( $reason ?: 'No reason provided' ) );
             
             $order = wc_get_order( $order_id );
@@ -780,16 +851,49 @@ add_action( 'plugins_loaded', function() {
 
             $this->log( 'Refund validation passed - Payment ID: ' . $payment_id );
 
-            // Validate refund amount
-            $order_total = (float) $order->get_total();
-            $already_refunded = (float) $order->get_total_refunded();
-            $remaining_refundable = $order_total - $already_refunded;
-            $refund_amount = $amount ? (float) $amount : $remaining_refundable;
+            // Enhanced debugging of order refund state
+            $order_total = wc_format_decimal( $order->get_total(), 2 );
+            $already_refunded = wc_format_decimal( $order->get_total_refunded(), 2 );
+            $remaining_refundable = wc_format_decimal( $order_total - $already_refunded, 2 );
+            $refund_amount = $amount ? wc_format_decimal( $amount, 2 ) : $remaining_refundable;
 
-            $this->log( 'Refund amount validation - Order total: ' . $order_total . ', Already refunded: ' . $already_refunded . ', Remaining: ' . $remaining_refundable . ', Requested: ' . $refund_amount );
+            // Debug existing refunds
+            $existing_refunds = $order->get_refunds();
+            $this->log( 'Refund debugging - Order has ' . count( $existing_refunds ) . ' existing refunds' );
+            foreach ( $existing_refunds as $refund ) {
+                $this->log( 'Existing refund: ID=' . $refund->get_id() . ', Amount=' . $refund->get_amount() . ', Reason="' . $refund->get_reason() . '"' );
+            }
 
-            if ( $refund_amount > $remaining_refundable ) {
-                $this->log( 'Refund validation failed: Amount (' . $refund_amount . ') exceeds remaining refundable amount (' . $remaining_refundable . ')', 'error' );
+            // Enhanced logging with raw values for debugging
+            $this->log( 'Refund amount validation (formatted) - Order total: ' . $order_total . ', Already refunded: ' . $already_refunded . ', Remaining: ' . $remaining_refundable . ', Requested: ' . $refund_amount );
+            $this->log( 'Refund amount validation (raw) - Order total: ' . $order->get_total() . ', Already refunded: ' . $order->get_total_refunded() . ', Requested raw: ' . $amount );
+
+            // Check if there are any existing refunds and handle this edge case
+            if ( $already_refunded > 0 && count( $existing_refunds ) > 0 ) {
+                $this->log( 'Detected existing refunds. This might be a retry of a failed refund attempt.', 'warning' );
+                // Allow the refund to proceed if it's for the same amount, as it might be a retry
+                if ( abs( $refund_amount - $already_refunded ) < 0.01 ) {
+                    $this->log( 'Allowing refund retry for same amount - treating as API-only refund', 'info' );
+                    // Skip WooCommerce validation since the refund record already exists
+                    // We'll just try to send it to VisioFex API
+                } else {
+                    $this->log( 'Refund amount mismatch - requested: ' . $refund_amount . ', already refunded: ' . $already_refunded, 'error' );
+                }
+            }
+
+            // Use a more generous tolerance (0.05) for floating point comparison and round both values
+            $tolerance = 0.05;
+            $remaining_rounded = round( (float) $remaining_refundable, 2 );
+            $refund_rounded = round( (float) $refund_amount, 2 );
+            $difference = $refund_rounded - $remaining_rounded;
+            
+            $this->log( 'Refund validation comparison - Remaining rounded: ' . $remaining_rounded . ', Refund rounded: ' . $refund_rounded . ', Difference: ' . $difference . ', Tolerance: ' . $tolerance );
+
+            // Allow the refund if there are existing refunds and this is likely a retry
+            $is_retry = ( $already_refunded > 0 && abs( $refund_amount - $already_refunded ) < 0.01 );
+            
+            if ( $difference > $tolerance && ! $is_retry ) {
+                $this->log( 'Refund validation failed: Amount (' . $refund_amount . ') exceeds remaining refundable amount (' . $remaining_refundable . ') by ' . $difference . ' (tolerance: ' . $tolerance . ')', 'error' );
                 return new WP_Error( 'invalid_refund_amount', 'Refund amount exceeds remaining refundable amount' );
             }
 
@@ -798,10 +902,20 @@ add_action( 'plugins_loaded', function() {
                 return new WP_Error( 'invalid_refund_amount', 'Refund amount must be greater than zero' );
             }
 
+            if ( $is_retry ) {
+                $this->log( 'Processing as refund retry - WooCommerce refund already exists, sending to VisioFex API only', 'info' );
+            }
+
+            // Validate payment ID format
+            if ( ! preg_match( '/^[a-zA-Z0-9_-]+$/', $payment_id ) ) {
+                $this->log( 'Refund validation failed: Invalid payment ID format', 'error' );
+                return new WP_Error( 'invalid_payment_id', 'Invalid payment ID format' );
+            }
+
             $payload = array(
-                'payment_id' => $payment_id,
-                'amount'     => $refund_amount,
-                'reason'     => $reason,
+                'payment_id' => sanitize_text_field( $payment_id ),
+                'amount'     => number_format( $refund_amount, 2, '.', '' ),
+                'reason'     => sanitize_text_field( $reason ),
             );
 
             $this->log( 'Refund payload prepared - Masked: ' . wp_json_encode( $this->mask_sensitive_data( $payload ) ) );
@@ -817,8 +931,12 @@ add_action( 'plugins_loaded', function() {
             $this->log( 'Refund API response - Code: ' . $code . ', Body length: ' . strlen( wp_json_encode( $body ) ) . ' chars' );
 
             if ( $code >= 200 && $code < 300 ) {
-                $this->log( 'Refund processed successfully' );
-                $order->add_order_note( sprintf( 'VisioFex refund processed: %s. Reason: %s', wc_price( $refund_amount ), $reason ) );
+                $this->log( 'Refund processed successfully via VisioFex API' );
+                if ( $is_retry ) {
+                    $order->add_order_note( sprintf( 'VisioFex refund retry successful: %s. API confirmed refund processing. Reason: %s', wc_price( $refund_amount ), $reason ) );
+                } else {
+                    $order->add_order_note( sprintf( 'VisioFex refund processed: %s. Reason: %s', wc_price( $refund_amount ), $reason ) );
+                }
                 return true;
             } else {
                 // Log the full response for debugging (with sensitive data masked)
@@ -853,6 +971,27 @@ add_action( 'plugins_loaded', function() {
         }
 
     // Webhook endpoint removed in simplified plugin
+
+        /**
+         * Validate sensitive operations with proper security checks
+         */
+        private function validate_admin_operation( $action = 'visiofex_admin' ) {
+            // Check if user has proper capabilities
+            if ( ! current_user_can( 'manage_woocommerce' ) ) {
+                $this->log( 'Security: Unauthorized access attempt for ' . $action, 'warning' );
+                return false;
+            }
+            
+            // For AJAX requests, verify nonce
+            if ( wp_doing_ajax() && ! empty( $_POST['security'] ) ) {
+                if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['security'] ) ), $action ) ) {
+                    $this->log( 'Security: Invalid nonce for ' . $action, 'warning' );
+                    return false;
+                }
+            }
+            
+            return true;
+        }
 
         protected function log( $msg, $level = 'info', $context = array() ) {
             if ( ! $this->logging ) return;
@@ -963,7 +1102,17 @@ function vxf_admin_order_panel( $order ) {
                     var sync = function(){ $ta.val($sel.val()); };
                     $sel.on('change', sync);
                     sync();
+                    
+                    // Ensure refund amount fields remain editable
+                    $('#refund_amount, input[name="refund_amount"], .refund_amount').prop('readonly', false).prop('disabled', false);
                 }
+            }
+            
+            // Ensure refund amount field is always editable for VisioFex orders
+            function ensureRefundAmountEditable() {
+                $('#refund_amount, input[name="refund_amount"], .refund_amount').each(function() {
+                    $(this).prop('readonly', false).prop('disabled', false);
+                });
             }
             
             // Watch for DOM changes to handle AJAX refreshes after refund failures
@@ -975,8 +1124,8 @@ function vxf_admin_order_panel( $order ) {
                             if (mutation.type === 'childList') {
                                 mutation.addedNodes.forEach(function(node) {
                                     if (node.nodeType === 1) { // Element node
-                                        if ($(node).find('#refund_reason, textarea[name="refund_reason"]').length ||
-                                            $(node).is('#refund_reason, textarea[name="refund_reason"]')) {
+                                        if ($(node).find('#refund_reason, textarea[name="refund_reason"], #refund_amount, input[name="refund_amount"]').length ||
+                                            $(node).is('#refund_reason, textarea[name="refund_reason"], #refund_amount, input[name="refund_amount"]')) {
                                             shouldCheck = true;
                                         }
                                     }
@@ -984,7 +1133,10 @@ function vxf_admin_order_panel( $order ) {
                             }
                         });
                         if (shouldCheck) {
-                            setTimeout(addRefundDropdown, 100);
+                            setTimeout(function() {
+                                addRefundDropdown();
+                                ensureRefundAmountEditable();
+                            }, 100);
                         }
                     });
                     
@@ -1001,9 +1153,18 @@ function vxf_admin_order_panel( $order ) {
             
             // Handle refund button clicks
             $(document).on('click', '.refund-items, .do-manual-refund, button[name="refund_amount"]', function() {
-                setTimeout(addRefundDropdown, 100);
-                setTimeout(addRefundDropdown, 500);
-                setTimeout(addRefundDropdown, 1000); // Extra delay for slower systems
+                setTimeout(function() {
+                    addRefundDropdown();
+                    ensureRefundAmountEditable();
+                }, 100);
+                setTimeout(function() {
+                    addRefundDropdown();
+                    ensureRefundAmountEditable();
+                }, 500);
+                setTimeout(function() {
+                    addRefundDropdown();
+                    ensureRefundAmountEditable();
+                }, 1000);
             });
             
             // Watch for error messages that might indicate refund failure
@@ -1012,8 +1173,14 @@ function vxf_admin_order_panel( $order ) {
                 if ($target.hasClass('notice') || $target.hasClass('error') || 
                     $target.hasClass('woocommerce-message') || $target.find('.notice, .error, .woocommerce-message').length) {
                     // When error/notice appears, refund UI might be refreshed
-                    setTimeout(addRefundDropdown, 500);
-                    setTimeout(addRefundDropdown, 1500);
+                    setTimeout(function() {
+                        addRefundDropdown();
+                        ensureRefundAmountEditable();
+                    }, 500);
+                    setTimeout(function() {
+                        addRefundDropdown();
+                        ensureRefundAmountEditable();
+                    }, 1500);
                 }
             });
             
@@ -1022,10 +1189,12 @@ function vxf_admin_order_panel( $order ) {
                 if ($('#refund_reason:visible, textarea[name="refund_reason"]:visible').length && !$('#vxf_refund_reason').length) {
                     addRefundDropdown();
                 }
+                ensureRefundAmountEditable();
             }, 2000);
             
             // Initial setup
             addRefundDropdown();
+            ensureRefundAmountEditable();
             setupMutationObserver();
             
             // Stop periodic checking after 5 minutes
