@@ -40,11 +40,22 @@ class WC_Gateway_VisioFex_Blocks extends AbstractPaymentMethodType {
     }
 
     public function get_payment_method_data() {
+        // Get the default description from the main gateway class's form fields
+        $gateway = new WC_Gateway_VisioFex();
+        $default_title = $gateway->form_fields['title']['default'];
+        $default_description = $gateway->form_fields['description']['default'];
+
+        $description = $this->get_setting( 'description' );
+        if ( empty( trim( $description ) ) ) {
+            $description = $default_description;
+        }
+
         $data = array(
-            'title'       => ! empty( $this->settings['title'] ) ? $this->settings['title'] : 'VisioFex Pay',
-            'description' => ! empty( $this->settings['description'] ) ? $this->settings['description'] : '',
-            'icon'        => esc_url( VXF_WC_PLUGIN_URL . 'assets/visiofex-logo.png' ),
-            'supports'    => array( 'products' ),
+            'title'              => $this->get_setting( 'title', $default_title ),
+            'description'        => $description,
+            'icon'               => esc_url( VXF_WC_PLUGIN_URL . 'assets/visiofex-logo.png' ),
+            'pluginUrl'          => esc_url( VXF_WC_PLUGIN_URL ),
+            'supports'           => array( 'products' ),
         );
         
         return $data;

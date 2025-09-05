@@ -33,6 +33,7 @@ wp-config-sample.php
 *.tmp
 .DS_Store
 Thumbs.db
+sync-plugin.sh
 
 # Node.js (if used for development)
 node_modules/
