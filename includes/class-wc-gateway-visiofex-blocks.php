@@ -50,12 +50,18 @@ class WC_Gateway_VisioFex_Blocks extends AbstractPaymentMethodType {
             $description = $default_description;
         }
 
+    // Respect the admin toggle for showing the VisioFex logo in Blocks checkout
+        $show_logo = isset( $this->settings['show_logo'] ) ? $this->settings['show_logo'] : 'yes';
+        $icon_url  = ( 'yes' === $show_logo ) ? esc_url( VXF_WC_PLUGIN_URL . 'assets/visiofex-logo.png' ) : '';
+
         $data = array(
-            'title'              => $this->get_setting( 'title', $default_title ),
-            'description'        => $description,
-            'icon'               => esc_url( VXF_WC_PLUGIN_URL . 'assets/visiofex-logo.png' ),
-            'pluginUrl'          => esc_url( VXF_WC_PLUGIN_URL ),
-            'supports'           => array( 'products' ),
+            'title'       => $this->get_setting( 'title', $default_title ),
+            'description' => $description,
+            'icon'        => $icon_url,
+            'pluginUrl'   => esc_url( VXF_WC_PLUGIN_URL ),
+            'supports'    => array( 'products' ),
+            // Expose for potential frontend use/debugging
+            'showLogo'    => ( 'yes' === $show_logo ),
         );
         
         return $data;
