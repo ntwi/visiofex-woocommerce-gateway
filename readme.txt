@@ -4,8 +4,8 @@ Tags: payments, checkout, woocommerce, visiofex, blocks, refunds
 Requires at least: 6.0
 Tested up to: 6.6
 Stable tag: 1.4.6
-License: GPLv3
-License URI: https://www.gnu.org/licenses/gpl-3.0.html
+License: MIT
+License URI: https://opensource.org/licenses/MIT
 
 Hosted checkout session for VisioFex/KonaCash with refunds and WooCommerce Blocks support.
 
