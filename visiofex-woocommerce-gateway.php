@@ -23,7 +23,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
  * Description: VisioFex/KonaCash hosted checkout for WooCommerce with refunds, Blocks support, and easy settings for keys, vendor id, and URLs.
  * Author:      NexaFlow Payments
  * Author URI:  https://nexaflowpayments.com
- * Version:     1.4.5
+ * Version:     1.4.6
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * WC requires at least: 7.0
@@ -34,7 +34,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'VXF_WC_VERSION', '1.4.5' );
+define( 'VXF_WC_VERSION', '1.4.6' );
 define( 'VXF_WC_PLUGIN_FILE', __FILE__ );
 define( 'VXF_WC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'VXF_WC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -113,7 +113,7 @@ add_action( 'plugins_loaded', function() {
 
             // Settings values with top-of-file defaults as fallback
             $this->enabled        = $this->get_option( 'enabled', 'no' );
-            $this->title          = $this->get_option( 'title', 'Secure Payment' );
+            $this->title          = __( 'VisioFex', 'visiofex-woocommerce' ); // Always use VisioFex for order display
             $this->description    = $this->get_option( 'description', '' );
             $this->testmode       = 'yes' === $this->get_option( 'testmode', VXF_DEFAULT_TESTMODE ? 'yes' : 'no' );
             $this->secret_key     = $this->get_option( 'secret_key', VXF_DEFAULT_SECRET_KEY );
@@ -134,6 +134,9 @@ add_action( 'plugins_loaded', function() {
 
             // Render description with bold lead in Classic checkout without requiring HTML in settings
             add_filter( 'woocommerce_gateway_description', array( $this, 'filter_gateway_description' ), 10, 2 );
+            
+            // Override payment method display in admin order list
+            add_filter( 'woocommerce_order_get_payment_method_title', array( $this, 'filter_order_payment_method_title' ), 10, 2 );
         }
 
         /**
@@ -151,13 +154,9 @@ add_action( 'plugins_loaded', function() {
         }
 
         public function get_title() {
-            // For admin/order pages, use simple text
-            if ( is_admin() || is_account_page() ) {
-                return __( 'VisioFex', 'visiofex-woocommerce' );
-            }
-            
-            // For checkout pages, use enhanced title with logo
-            if ( is_checkout() ) {
+            // Check if we're on the specific checkout page for payment method selection
+            if ( is_checkout() && ! is_admin() && ! wp_doing_ajax() && ! is_wc_endpoint_url() && ! isset( $_REQUEST['wc-ajax'] ) ) {
+                // Only show enhanced title with logo on the main checkout page for payment method selection
                 $title = $this->get_option( 'title', __( 'Secure Payment', 'visiofex-woocommerce' ) );
                 $logo_url = esc_url( VXF_WC_PLUGIN_URL . 'assets/visiofex-logo.png' );
                 
@@ -169,8 +168,16 @@ add_action( 'plugins_loaded', function() {
                 return apply_filters( 'woocommerce_gateway_title', $title_html, $this->id );
             }
             
-            // Default fallback
-            return $this->get_option( 'title', __( 'Secure Payment', 'visiofex-woocommerce' ) );
+            // For all other contexts (admin, order pages, emails, etc.), return simple "VisioFex"
+            return __( 'VisioFex', 'visiofex-woocommerce' );
+        }
+
+        /**
+         * Override method title to ensure consistent display
+         */
+        public function get_method_title() {
+            // Always return simple "VisioFex" - we don't want "VisioFex Pay" showing anywhere
+            return __( 'VisioFex', 'visiofex-woocommerce' );
         }
 
         /**
@@ -254,6 +261,26 @@ add_action( 'plugins_loaded', function() {
 
             $html  = $this->format_description_html( $plain );
             return $html;
+        }
+
+        /**
+         * Override payment method title display in admin for all VisioFex orders
+         */
+        public function filter_order_payment_method_title( $title, $order ) {
+            // Only apply to VisioFex orders
+            if ( $order->get_payment_method() !== $this->id ) {
+                return $title;
+            }
+            
+            // For admin contexts, always show "VisioFex" regardless of what's stored
+            if ( is_admin() ) {
+                if ( $this->logging ) {
+                    $this->log( 'filter_order_payment_method_title() - Overriding stored title "' . $title . '" with "VisioFex" for order #' . $order->get_id() );
+                }
+                return __( 'VisioFex', 'visiofex-woocommerce' );
+            }
+            
+            return $title;
         }
 
         /**
@@ -619,29 +646,22 @@ add_action( 'plugins_loaded', function() {
             $this->log( 'Order sync completed for order #' . $order->get_id() );
 }
         public function is_available() {
-            $this->log( 'Checking gateway availability - Enabled: ' . $this->enabled . ', SSL: ' . ( is_ssl() ? 'yes' : 'no' ) . ', Test mode: ' . ( $this->testmode ? 'yes' : 'no' ) );
-            
             if ( 'yes' !== $this->enabled ) { 
-                $this->log( 'Gateway not available: Disabled in settings', 'debug' );
                 return false; 
             }
             
             if ( ! is_ssl() && ! $this->testmode ) { 
-                $this->log( 'Gateway not available: SSL required for live mode', 'debug' );
                 return false; 
             }
             
             // Allow showing in test mode even if keys are empty (helps setup); in live require a key
             if ( empty( $this->secret_key ) ) {
                 if ( $this->testmode ) { 
-                    $this->log( 'Gateway available in test mode without secret key', 'debug' );
                     return true; 
                 }
-                $this->log( 'Gateway not available: Secret key required for live mode', 'debug' );
                 return false;
             }
             
-            $this->log( 'Gateway available - All requirements met', 'debug' );
             return true;
         }
 

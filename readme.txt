@@ -3,7 +3,7 @@ Contributors: your-company
 Tags: payments, checkout, woocommerce, visiofex, blocks, refunds
 Requires at least: 6.0
 Tested up to: 6.6
-Stable tag: 1.4.4
+Stable tag: 1.4.6
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -51,6 +51,15 @@ In wordpress (https://yoursite/wp-admin):
 - Save changes to enable the gateway
 
 == Changelog ==
+
+= 1.4.6 =
+* **MAJOR**: Fixed payment method display inconsistency across admin and order pages
+* **FIX**: Orders page now consistently shows "via VisioFex" instead of mixed "via Secure Payment"/"via VisioFex Pay"
+* **FIX**: New orders now save with correct "VisioFex" payment method title in database
+* **ENHANCED**: Simplified title logic - checkout shows enhanced branding, all other contexts show "VisioFex"
+* **ENHANCED**: Comprehensive debug logging for payment method title resolution across different contexts
+* **IMPROVED**: Consistent branding experience from checkout through order management
+* **DEVELOPER**: Overrode gateway title property to ensure consistent database storage for new orders
 
 = 1.4.5 =
 * **MAJOR**: Enhanced refund system with robust error handling and retry logic
