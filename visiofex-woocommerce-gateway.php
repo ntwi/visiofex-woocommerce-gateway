@@ -14,7 +14,7 @@ define('VXF_DEFAULT_TESTMODE', true);
 define('VXF_DEFAULT_SECRET_KEY', '');
 define('VXF_DEFAULT_VENDOR_ID', '');
 /** Your store's public base URL (used to prefill success/return/cancel). */
-define('VXF_DEFAULT_STORE_DOMAIN', 'http://localhost:8000');
+define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
 // Deprecated settings removed: public key, webhook secret, API base override, checkout mode
 
 /**
