@@ -28,7 +28,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
  * Requires PHP: 7.4
  * WC requires at least: 7.0
  * WC tested up to: 9.2
- * License:     GPLv3
+ * License:     MIT
  * Text Domain: visiofex-woocommerce
  */
 
