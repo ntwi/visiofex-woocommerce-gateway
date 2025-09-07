@@ -3,6 +3,7 @@ Contributors: your-company
 Tags: payments, checkout, woocommerce, visiofex, blocks, refunds
 Requires at least: 6.0
 Tested up to: 6.6
+
 Stable tag: 1.4.6
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -51,6 +52,14 @@ In wordpress (https://yoursite/wp-admin):
 - Save changes to enable the gateway
 
 == Changelog ==
+
+= 1.4.7 =
+* NEW: Setting to show/hide the VisioFex logo on checkout next to the payment title
+* ENHANCED: Classic and Blocks checkout both respect the logo toggle; Blocks icon hidden when disabled
+* FIX: Order admin page now always shows plain text “Payment via visiofex” (no HTML rendered)
+* FIX: Orders list Billing column consistently shows “via visiofex”
+* DEV: Cleaned up temporary debug output and simplified title logic across contexts
+* DEV: Local Docker environment now uses http://localhost:8000 (removed ngrok override)
 
 = 1.4.6 =
 * **MAJOR**: Fixed payment method display inconsistency across admin and order pages

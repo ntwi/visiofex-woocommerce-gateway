@@ -23,7 +23,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
  * Description: VisioFex/KonaCash hosted checkout for WooCommerce with refunds, Blocks support, and easy settings for keys, vendor id, and URLs.
  * Author:      NexaFlow Payments
  * Author URI:  https://nexaflowpayments.com
- * Version:     1.4.6
+ * Version:     1.4.7
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * WC requires at least: 7.0
@@ -34,7 +34,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'VXF_WC_VERSION', '1.4.6' );
+define( 'VXF_WC_VERSION', '1.4.7' );
 define( 'VXF_WC_PLUGIN_FILE', __FILE__ );
 define( 'VXF_WC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'VXF_WC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -97,6 +97,7 @@ add_action( 'plugins_loaded', function() {
         public $api_base;
         public $mode;
         public $logging;
+        public $show_logo;
 
         public function __construct() {
             $this->id                 = 'visiofex';
@@ -122,6 +123,7 @@ add_action( 'plugins_loaded', function() {
             $this->api_base       = '';
             $this->mode           = 'payment';
             $this->logging        = 'yes' === $this->get_option( 'logging', 'yes' );
+            $this->show_logo      = 'yes' === $this->get_option( 'show_logo', 'yes' );
 
             add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
 
@@ -154,22 +156,22 @@ add_action( 'plugins_loaded', function() {
         }
 
         public function get_title() {
-            // Check if we're on the specific checkout page for payment method selection
-            if ( is_checkout() && ! is_admin() && ! wp_doing_ajax() && ! is_wc_endpoint_url() && ! isset( $_REQUEST['wc-ajax'] ) ) {
-                // Only show enhanced title with logo on the main checkout page for payment method selection
-                $title = $this->get_option( 'title', __( 'Secure Payment', 'visiofex-woocommerce' ) );
-                $logo_url = esc_url( VXF_WC_PLUGIN_URL . 'assets/visiofex-logo.png' );
-                
-                $title_html = '<span class="visiofex-title-wrapper">';
-                $title_html .= '<img class="visiofex-logo" src="' . $logo_url . '" alt="VisioFex" />';
-                $title_html .= '<span class="visiofex-payment-title">' . esc_html( $title ) . '</span>';
-                $title_html .= '</span>';
-
-                return apply_filters( 'woocommerce_gateway_title', $title_html, $this->id );
+            // Only decorate the title on the checkout page. Elsewhere, return plain text.
+            if ( function_exists( 'is_checkout' ) && is_checkout() ) {
+                $custom_title = $this->get_option( 'title', __( 'Secure Payment', 'visiofex-woocommerce' ) );
+                $show_logo_option = $this->get_option( 'show_logo', 'yes' );
+                if ( 'yes' === $show_logo_option ) {
+                    $logo_url = esc_url( VXF_WC_PLUGIN_URL . 'assets/visiofex-logo.png' );
+                    $title_html = '<span class="visiofex-title-wrapper">';
+                    $title_html .= '<img class="visiofex-logo" src="' . $logo_url . '" alt="VisioFex" />';
+                    $title_html .= '<span class="visiofex-payment-title">' . esc_html( $custom_title ) . '</span>';
+                    $title_html .= '</span>';
+                    return apply_filters( 'woocommerce_gateway_title', $title_html, $this->id );
+                }
+                return apply_filters( 'woocommerce_gateway_title', esc_html( $custom_title ), $this->id );
             }
-            
-            // For all other contexts (admin, order pages, emails, etc.), return simple "VisioFex"
-            return __( 'VisioFex', 'visiofex-woocommerce' );
+            // Non-checkout contexts (admin, order pages, emails): simple identifier
+            return apply_filters( 'woocommerce_gateway_title', 'visiofex', $this->id );
         }
 
         /**
@@ -236,6 +238,13 @@ add_action( 'plugins_loaded', function() {
                     'default'     => VXF_DEFAULT_STORE_DOMAIN,
                     'description' => __( 'Used to prefill success/return/cancel URLs.', 'visiofex-woocommerce' ),
                 ),
+                'show_logo' => array(
+                    'title'       => __( 'Show Logo on Checkout', 'visiofex-woocommerce' ),
+                    'type'        => 'checkbox',
+                    'label'       => __( 'Display VisioFex logo next to payment method title on checkout', 'visiofex-woocommerce' ),
+                    'default'     => 'yes',
+                    'description' => __( 'When checked, shows the VisioFex logo next to your custom title. When unchecked, shows only your custom title text.', 'visiofex-woocommerce' ),
+                ),
                 'logging' => array(
                     'title'       => __( 'Debug log', 'visiofex-woocommerce' ),
                     'type'        => 'checkbox',
@@ -272,15 +281,9 @@ add_action( 'plugins_loaded', function() {
                 return $title;
             }
             
-            // For admin contexts, always show "VisioFex" regardless of what's stored
-            if ( is_admin() ) {
-                if ( $this->logging ) {
-                    $this->log( 'filter_order_payment_method_title() - Overriding stored title "' . $title . '" with "VisioFex" for order #' . $order->get_id() );
-                }
-                return __( 'VisioFex', 'visiofex-woocommerce' );
-            }
-            
-            return $title;
+            // Always normalize to lowercase identifier so Woo renders
+            // "Payment via visiofex" consistently on order screens and emails.
+            return 'visiofex';
         }
 
         /**
@@ -564,7 +567,7 @@ add_action( 'plugins_loaded', function() {
                 $txn_id = $session['paymentIntent'];
             }
             if ( ! $txn_id && ! empty($session['_id ']) ) {
-                // Sometimes there’s a way to filter by session: /transactions?sessionId=
+                // Sometimes there’s a way to filter by session: /transactions?sessionId=/
                 $r2 = $this->request('GET', 'transactions?sessionId=' . rawurlencode($session['_id']));
                 $list = $r2['body']['data']['transactions'] ?? $r2['body']['data'] ?? array();
                 if ( is_array($list) && ! empty($list) && isset($list[0]['_id']) ) {
@@ -885,7 +888,7 @@ add_action( 'plugins_loaded', function() {
             }
 
             // Enhanced logging with raw values for debugging
-            $this->log( 'Refund amount validation (formatted) - Order total: ' . $order_total . ', Already refunded: ' . $already_refunded . ', Remaining: ' . $remaining_refundable . ', Requested: ' . $refund_amount );
+            $this->log( 'Refund amount validation (formatted) - Order total: ' . $order_total . ', Already refunded: ' . $already_refunded . ', Remaining: ' . $refund_amount );
             $this->log( 'Refund amount validation (raw) - Order total: ' . $order->get_total() . ', Already refunded: ' . $order->get_total_refunded() . ', Requested raw: ' . $amount );
 
             // Check if there are any existing refunds and handle this edge case
