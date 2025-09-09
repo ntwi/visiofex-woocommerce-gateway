@@ -10,20 +10,10 @@
     const el = window.wp.element;
     const children = [];
     
-    // VisioFex logo
-    if (settings.icon) {
-      children.push(el.createElement('img', {
-        src: settings.icon,
-        alt: 'VisioFex',
-        className: 'visiofex-logo',
-        style: { verticalAlign: 'middle', marginRight: '8px' }
-      }));
-    }
-
-    // Title
-    children.push(el.createElement('span', { 
-      style: { verticalAlign: 'middle', marginRight: '8px' }
-    }, settings.title || 'Secure Payment'));
+    // Title only (logo removed intentionally)
+    children.push(el.createElement('span', {
+      style: { verticalAlign: 'middle', marginRight: '8px', fontWeight: 500 }
+    }, settings.title || 'Pay by Credit or Debit Card'));
     
   // Card brand icons container
   const cardIcons = [];

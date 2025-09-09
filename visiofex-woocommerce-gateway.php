@@ -97,7 +97,7 @@ add_action( 'plugins_loaded', function() {
         public $api_base;
         public $mode;
         public $logging;
-        public $show_logo;
+    // Removed $show_logo (logo toggle no longer supported)
 
         public function __construct() {
             $this->id                 = 'visiofex';
@@ -105,8 +105,8 @@ add_action( 'plugins_loaded', function() {
             $this->icon = VXF_WC_PLUGIN_URL . 'assets/visiofex-logo.png';
             // No on-page fields; we redirect to hosted checkout
             $this->has_fields = false;
-            $this->method_title       = __( 'VisioFex Pay', 'visiofex-woocommerce' );
-            $this->method_description = __( 'Redirect customers to VisioFex/KonaCash hosted checkout. Supports refunds.', 'visiofex-woocommerce' );
+            $this->method_title       = __( 'VisioFex', 'visiofex-woocommerce' );
+            $this->method_description = __( 'VisioFex hosted checkout. Accept major cards plus Cash App Pay, and Amazon Pay.', 'visiofex-woocommerce' );
             $this->supports           = array( 'products', 'refunds' );
 
             $this->init_form_fields();
@@ -114,16 +114,17 @@ add_action( 'plugins_loaded', function() {
 
             // Settings values with top-of-file defaults as fallback
             $this->enabled        = $this->get_option( 'enabled', 'no' );
-            $this->title          = __( 'VisioFex', 'visiofex-woocommerce' ); // Always use VisioFex for order display
-            $this->description    = $this->get_option( 'description', '' );
+            // Use new user‑facing defaults (stored option may override)
+            $this->title          = $this->get_option( 'title', __( 'Pay by Credit or Debit Card', 'visiofex-woocommerce' ) );
+            $this->description    = $this->get_option( 'description', __( 'Pay securely using your Visa, MasterCard, American Express or Discover. This method also allows Cash App and Pay with Amazon. After payment you will be redirected back to our website and your order will ship out right away.', 'visiofex-woocommerce' ) );
             $this->testmode       = 'yes' === $this->get_option( 'testmode', VXF_DEFAULT_TESTMODE ? 'yes' : 'no' );
             $this->secret_key     = $this->get_option( 'secret_key', VXF_DEFAULT_SECRET_KEY );
             $this->vendor_id      = $this->get_option( 'vendor_id', VXF_DEFAULT_VENDOR_ID );
-            $this->store_domain   = rtrim( $this->get_option( 'store_domain', VXF_DEFAULT_STORE_DOMAIN ), '/' );
+            $this->store_domain   = rtrim( $this->get_option( 'store_domain', untrailingslashit( home_url() ) ), '/' );
             $this->api_base       = '';
             $this->mode           = 'payment';
             $this->logging        = 'yes' === $this->get_option( 'logging', 'yes' );
-            $this->show_logo      = 'yes' === $this->get_option( 'show_logo', 'yes' );
+            // Logo toggle deprecated; always text + optional card icons
 
             add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
 
@@ -156,21 +157,12 @@ add_action( 'plugins_loaded', function() {
         }
 
         public function get_title() {
-            // Only decorate the title on the checkout page. Elsewhere, return plain text.
+            // Checkout: show configured title (plain text) – no logo.
             if ( function_exists( 'is_checkout' ) && is_checkout() ) {
-                $custom_title = $this->get_option( 'title', __( 'Secure Payment', 'visiofex-woocommerce' ) );
-                $show_logo_option = $this->get_option( 'show_logo', 'yes' );
-                if ( 'yes' === $show_logo_option ) {
-                    $logo_url = esc_url( VXF_WC_PLUGIN_URL . 'assets/visiofex-logo.png' );
-                    $title_html = '<span class="visiofex-title-wrapper">';
-                    $title_html .= '<img class="visiofex-logo" src="' . $logo_url . '" alt="VisioFex" />';
-                    $title_html .= '<span class="visiofex-payment-title">' . esc_html( $custom_title ) . '</span>';
-                    $title_html .= '</span>';
-                    return apply_filters( 'woocommerce_gateway_title', $title_html, $this->id );
-                }
+                $custom_title = $this->get_option( 'title', __( 'Pay by Credit or Debit Card', 'visiofex-woocommerce' ) );
                 return apply_filters( 'woocommerce_gateway_title', esc_html( $custom_title ), $this->id );
             }
-            // Non-checkout contexts (admin, order pages, emails): simple identifier
+            // Elsewhere keep lowercase identifier so Woo renders "via visiofex" consistently.
             return apply_filters( 'woocommerce_gateway_title', 'visiofex', $this->id );
         }
 
@@ -206,13 +198,13 @@ add_action( 'plugins_loaded', function() {
                 'title' => array(
                     'title'       => __( 'Title', 'visiofex-woocommerce' ),
                     'type'        => 'text',
-                    'default'     => __( 'Secure Payment', 'visiofex-woocommerce' ),
+                    'default'     => __( 'Pay by Credit or Debit Card', 'visiofex-woocommerce' ),
                     'desc_tip'    => true,
                 ),
                 'description' => array(
                     'title'       => __( 'Description', 'visiofex-woocommerce' ),
                     'type'        => 'textarea',
-                    'default'     => __( "Pay securely with your credit or debit card through VisioFex.\nAfter clicking \"Place Order\", you’ll be redirected to our secure payment page. Please make sure your browser allows pop-ups so the payment window can open smoothly.", 'visiofex-woocommerce' ),
+                    'default'     => __( 'Pay securely using your Visa, MasterCard, American Express or Discover. This method also allows Apple Pay, Cash App Pay and Pay with Amazon. After payment you will be redirected back to our website and your order will ship out right away.', 'visiofex-woocommerce' ),
                     'description' => __( 'This text will be displayed to customers during checkout.', 'visiofex-woocommerce' ),
                 ),
                 'testmode' => array(
@@ -235,16 +227,11 @@ add_action( 'plugins_loaded', function() {
                 'store_domain' => array(
                     'title'       => __( 'Your Store Domain', 'visiofex-woocommerce' ),
                     'type'        => 'text',
-                    'default'     => VXF_DEFAULT_STORE_DOMAIN,
-                    'description' => __( 'Used to prefill success/return/cancel URLs.', 'visiofex-woocommerce' ),
+                    'default'     => untrailingslashit( home_url() ),
+                    'description' => __( 'Auto-detected from your site. Used for success/return/cancel URLs.', 'visiofex-woocommerce' ),
+                    'placeholder' => untrailingslashit( home_url() ),
                 ),
-                'show_logo' => array(
-                    'title'       => __( 'Show Logo on Checkout', 'visiofex-woocommerce' ),
-                    'type'        => 'checkbox',
-                    'label'       => __( 'Display VisioFex logo next to payment method title on checkout', 'visiofex-woocommerce' ),
-                    'default'     => 'yes',
-                    'description' => __( 'When checked, shows the VisioFex logo next to your custom title. When unchecked, shows only your custom title text.', 'visiofex-woocommerce' ),
-                ),
+                // Removed show_logo setting (logo deprecated)
                 'logging' => array(
                     'title'       => __( 'Debug log', 'visiofex-woocommerce' ),
                     'type'        => 'checkbox',
@@ -1076,7 +1063,14 @@ add_action( 'woocommerce_blocks_loaded', function() {
 } );
 
 
-register_activation_hook( __FILE__, function() {} );
+register_activation_hook( __FILE__, function() {
+    // Set default store domain if not already set
+    $existing_settings = get_option( 'woocommerce_visiofex_settings', array() );
+    if ( empty( $existing_settings['store_domain'] ) ) {
+        $existing_settings['store_domain'] = untrailingslashit( home_url() );
+        update_option( 'woocommerce_visiofex_settings', $existing_settings );
+    }
+} );
 register_deactivation_hook( __FILE__, function() {} );
 
 add_action( 'woocommerce_admin_order_data_after_order_details', 'vxf_admin_order_panel', 10, 1 );
@@ -1256,3 +1250,217 @@ add_action('woocommerce_order_action_vxf_sync_status', function($order){
     $gw = $pgs['visiofex'];
     $gw->sync_order_from_visiofex( $order );
 });
+
+// After class WC_Gateway_VisioFex definition or near bottom of file add helper if not present
+if ( ! function_exists( 'visiofex_batch_auto_sync_orders' ) ) {
+    /**
+     * Batch auto sync for VisioFex orders lacking a transaction id within configured window.
+     * Runs silently on Orders list load. Uses transient lock to avoid repeated API hits.
+     */
+    function visiofex_batch_auto_sync_orders() {
+        // Debug logging to see if function is called at all
+        visiofex_log( 'Auto-sync: function called - checking conditions' );
+        
+        if ( ! is_admin() ) {
+            visiofex_log( 'Auto-sync: not admin - exiting' );
+            return;
+        }
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            visiofex_log( 'Auto-sync: user cannot manage woocommerce - exiting' );
+            return;
+        }
+        
+        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+        
+        // Support both classic and HPOS orders screens
+        $valid_screens = array( 'edit-shop_order', 'woocommerce_page_wc-orders' );
+        if ( ! $screen || ! in_array( $screen->id, $valid_screens, true ) ) {
+            return;
+        }
+
+        // Check and log transient lock status
+        $lock_exists = get_transient( 'vxf_auto_sync_lock' );
+        if ( $lock_exists ) {
+            visiofex_log( 'Auto-sync: locked (transient exists) - exiting' );
+            return;
+        }
+        
+        visiofex_log( 'Auto-sync: setting lock and proceeding' );
+        set_transient( 'vxf_auto_sync_lock', 1, 15 );
+
+        $hours = (int) get_option( 'visiofex_auto_sync_hours', 24 );
+        if ( $hours < 1 ) { $hours = 1; }
+        if ( $hours > 48 ) { $hours = 48; }
+        $cutoff_gmt = gmdate( 'Y-m-d H:i:s', time() - ( $hours * 3600 ) );
+        
+        // $cutoff_gmt = gmdate( 'Y-m-d H:i:s', time() - ( $hours * 60 ) ); // Uses minutes instead of hours
+
+        // Start log for visibility
+        visiofex_log( 'Auto-sync: scan start (window=' . $hours . 'h, cutoff=' . $cutoff_gmt . ')' );
+
+        // Query recent pending/on-hold orders with session id but no transaction id
+        $args = array(
+            'limit'        => 15, // hard cap per load
+            'status'       => array( 'pending','on-hold' ),
+            'orderby'      => 'date',
+            'order'        => 'DESC',
+            'payment_method' => 'visiofex',
+            'date_created' => '>' . $cutoff_gmt,
+            'return'       => 'objects',
+        );
+        
+        visiofex_log( 'Auto-sync: querying orders with args - ' . wp_json_encode( array_merge( $args, array( 'date_created' => 'cutoff_applied' ) ) ) );
+        
+        $orders = wc_get_orders( $args );
+        
+        visiofex_log( 'Auto-sync: found ' . ( is_array( $orders ) ? count( $orders ) : 0 ) . ' total orders matching criteria' );
+        
+        // Collect eligible orders (session id present, no transaction id yet)
+        $eligible = array();
+        if ( ! empty( $orders ) ) {
+            foreach ( $orders as $order ) {
+                $oid = $order->get_id();
+                // Use WooCommerce order methods for HPOS compatibility
+                $has_txn_id = $order->get_meta( '_visiofex_transaction_id' ) || $order->get_meta( '_visiofex_payment_id' );
+                $session_id = $order->get_meta( '_visiofex_session_id' );
+                
+                visiofex_log( 'Auto-sync: evaluating order #' . $oid . ' - has_txn_id: ' . ( $has_txn_id ? 'yes' : 'no' ) . ', session_id: ' . ( $session_id ? substr( $session_id, 0, 8 ) . '...' : 'none' ) );
+                
+                if ( $has_txn_id ) { continue; }
+                if ( ! $session_id ) { continue; }
+                $eligible[] = array( 'order' => $order, 'session' => $session_id );
+            }
+        }
+
+        if ( empty( $eligible ) ) {
+            visiofex_log( 'Auto-sync: no eligible pending sessions within last ' . $hours . 'h window.' );
+            return;
+        }
+
+        // Log summary of what we are about to process
+        $log_list = array();
+        foreach ( $eligible as $row ) {
+            $log_list[] = '#' . $row['order']->get_id() . '(' . $row['session'] . ')';
+            if ( count( $log_list ) >= 10 ) break; // limit verbosity
+        }
+        visiofex_log( 'Auto-sync: found ' . count( $eligible ) . ' eligible order(s) (showing up to 10): ' . implode( ', ', $log_list ) . ' | window=' . $hours . 'h' );
+
+        foreach ( $eligible as $row ) {
+            visiofex_auto_sync_single_order( $row['order'], $row['session'] );
+        }
+    }
+}
+
+if ( ! function_exists( 'visiofex_auto_sync_single_order' ) ) {
+    /**
+     * Sync a single order by its session id (no transaction id yet).
+     */
+    function visiofex_auto_sync_single_order( WC_Order $order, $session_id ) {
+        // Retrieve secret key from gateway settings (matches process_payment usage)
+        $settings = get_option( 'woocommerce_visiofex_settings', array() );
+        $api_key = isset( $settings['secret_key'] ) ? $settings['secret_key'] : '';
+        if ( ! $api_key ) {
+            visiofex_log( 'Auto-sync: skipping order #' . $order->get_id() . ' (no secret key configured)' );
+            return;
+        }
+
+        visiofex_log( 'Auto-sync: checking order #' . $order->get_id() . ' session ' . $session_id );
+
+        $resp = wp_remote_get( "https://api.konacash.com/v1/checkout/sessions/$session_id", array(
+            'headers' => array( 'X-API-KEY' => $api_key ),
+            'timeout' => 15,
+        ) );
+        if ( is_wp_error( $resp ) ) return;
+        $body = json_decode( wp_remote_retrieve_body( $resp ), true );
+        if ( ! is_array( $body ) ) return;
+        
+        // Parse response structure like the manual sync does
+        $sess = $body['data']['session'] ?? array();
+        $txn = $body['data']['transaction'] ?? array();
+        
+        $status = strtolower( $sess['paymentStatus'] ?? '' );
+        $txn_id = $txn['_id'] ?? '';
+        
+        visiofex_log( 'Auto-sync: API response - Status: ' . ( $status ?: 'none' ) . ', Transaction ID: ' . ( $txn_id ?: 'none' ) );
+
+        if ( in_array( $status, array( 'paid','succeeded' ), true ) ) {
+            if ( $txn_id ) {
+                $order->update_meta_data( '_visiofex_transaction_id', $txn_id );
+                $order->update_meta_data( '_visiofex_payment_id', $txn_id ); // Also save as payment_id for consistency
+                $order->save();
+                
+                if ( ! $order->is_paid() ) {
+                    $order->payment_complete( $txn_id );
+                }
+                visiofex_log( 'Auto-sync: order #' . $order->get_id() . ' session ' . $session_id . ' resolved to transaction ' . $txn_id . ' -> marked paid.' );
+            } else {
+                visiofex_log( 'Auto-sync: order #' . $order->get_id() . ' session ' . $session_id . ' shows paid status but no transaction ID - keeping pending until transaction appears.' );
+            }
+        } elseif ( in_array( $status, array( 'failed','canceled' ), true ) ) {
+            if ( ! $order->has_status( 'failed' ) ) {
+                $order->update_status( 'failed', 'VisioFex reported failure (auto sync)' );
+            }
+            visiofex_log( 'Auto-sync: order #' . $order->get_id() . ' session ' . $session_id . ' status=' . $status . ' -> marked failed.' );
+        } else {
+            visiofex_log( 'Auto-sync: order #' . $order->get_id() . ' session ' . $session_id . ' still pending (status=' . ( $status ?: 'none' ) . ').' );
+        }
+    }
+}
+
+add_action( 'current_screen', 'visiofex_batch_auto_sync_orders' );
+
+// Add setting field for auto sync window hours inside gateway form_fields hook via filter if needed
+add_filter( 'woocommerce_settings_api_form_fields_visiofex', function( $fields ) {
+    // Append new field
+    $fields['auto_sync_hours'] = array(
+        'title'       => __( 'Auto Sync Window (hours)', 'visiofex-woocommerce' ),
+        'type'        => 'number',
+        'description' => __( 'On Orders page load, pending VisioFex orders with a session but no transaction ID created within this window will be refreshed automatically.', 'visiofex-woocommerce' ),
+        'default'     => 24,
+        'desc_tip'    => true,
+        'custom_attributes' => array(
+            'min' => 1,
+            'max' => 48,
+            'step' => 1,
+        ),
+    );
+    return $fields;
+} );
+
+// Persist option manually if gateway does not automatically store custom numeric field name
+add_action( 'woocommerce_update_options_payment_gateways_visiofex', function() {
+    if ( isset( $_POST['woocommerce_visiofex_auto_sync_hours'] ) ) {
+        $raw = intval( $_POST['woocommerce_visiofex_auto_sync_hours'] );
+        if ( $raw < 1 ) $raw = 1; if ( $raw > 48 ) $raw = 48;
+        update_option( 'visiofex_auto_sync_hours', $raw );
+    }
+} );
+
+// Provide backward compatible retrieval in constructor (if needed elsewhere) via helper
+if ( ! function_exists( 'visiofex_get_auto_sync_hours' ) ) {
+    function visiofex_get_auto_sync_hours() {
+        $h = (int) get_option( 'visiofex_auto_sync_hours', 24 );
+        if ( $h < 1 ) $h = 1; if ( $h > 48 ) $h = 48; return $h;
+    }
+}
+
+// Logging helper outside the gateway class context
+if ( ! function_exists( 'visiofex_logging_enabled' ) ) {
+    function visiofex_logging_enabled() : bool {
+        $settings = get_option( 'woocommerce_visiofex_settings', array() );
+        if ( isset( $settings['logging'] ) ) {
+            return $settings['logging'] === 'yes';
+        }
+        // Fallback: assume enabled by default
+        return true;
+    }
+}
+
+if ( ! function_exists( 'visiofex_log' ) ) {
+    function visiofex_log( $message, $level = 'info' ) {
+        if ( ! visiofex_logging_enabled() ) return;
+        if ( ! function_exists( 'wc_get_logger' ) ) return;
+        $logger = wc_get_logger();
+        $logger->log( $level, $message, array( 'source' => 'visiofex' ) );
+    }
+}

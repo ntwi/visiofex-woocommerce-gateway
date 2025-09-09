@@ -3,7 +3,7 @@ Contributors: your-company
 Tags: payments, checkout, woocommerce, visiofex, blocks, refunds
 Requires at least: 6.0
 Tested up to: 6.6
-Stable tag: 1.4.7
+Stable tag: 1.4.8
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -11,23 +11,28 @@ Hosted checkout session for VisioFex/KonaCash with refunds and WooCommerce Block
 
 == Description ==
 - **Complete Order Integration**: Forwards all order components to VisioFex including products, coupon discounts, shipping, fees, and taxes
+- **Automatic Order Sync**: Pending orders are automatically refreshed when visiting the Orders page - no manual sync required
 - **Enhanced Payment Flow**: Robust redirect fallback system handles plugin conflicts and ensures reliable checkout experience
+- **Auto-Configuration**: Store URLs are automatically detected and configured to prevent setup errors
 - **Comprehensive Logging**: Detailed diagnostic logging with sensitive data protection for easy troubleshooting
-- **Settings page includes**: Test mode, Secret Key, Vendor ID, Your Store Domain, and Debug logging
+- **Settings page includes**: Test mode, Secret Key, Vendor ID, Auto-sync window (1-48 hours), and Debug logging
 - **Hosted Checkout**: Creates a hosted checkout session and redirects customers to the secure VisioFex payment page
 - **Full Refund Support**: Process refunds directly from the WooCommerce order screen with automatic synchronization
 - **WooCommerce Blocks**: Full compatibility with modern WooCommerce block-based checkout
+- **Professional Card Icons**: Protected CSS ensures card brand icons display properly in all themes and page builders
 
 Requirements and tips:
 - WooCommerce Cart, Checkout, and My Account pages should exist and permalinks should be set to Postname WordPress->Settings->Permalinks
+- **Automatic Order Sync**: Orders with pending payments are automatically refreshed when you visit WooCommerce->Orders (configurable 1-48 hour window)
+- **Auto-Configuration**: Store domain URLs are automatically detected - no manual setup required for return/success pages
 - **Enhanced Debugging**: Enable debug logging for comprehensive diagnostics including order totals, coupon processing, and API communications
 - **Troubleshooting**: Visit WooCommerce->Status->Logs->VisioFex for detailed logs with automatic sensitive data masking
 - **Plugin Compatibility**: Built-in fallback system handles conflicts with other plugins (WhatsApp widgets, etc.)
 - **Payment Flow**: The plugin redirects users during checkout - the enhanced fallback system ensures reliable redirects even with plugin interference
 - **Order Processing**: Complete order details including all discounts and fees are automatically forwarded to VisioFex
-- **Post-Payment**: Customers are redirected back to your site's order received page using Your Store Domain
+- **Post-Payment**: Customers are redirected back to your site's order received page using auto-detected Store Domain
 - **Refund Management**: Orders can be refunded directly by pressing the Refund button on the Order page with real-time synchronization
-- **Order Synchronization**: Click Actions->Sync with VisioFex on any order to ensure latest payment and refund status
+- **Order Synchronization**: Auto-sync handles most cases automatically, or manually click Actions->Sync with VisioFex on any order
 
 == Installation ==
 1. Upload the ZIP via Plugins > Add New > Upload Plugin and click activate.
@@ -44,13 +49,30 @@ In wordpress (https://yoursite/wp-admin):
 - Navigate to WooCommerce -> Settings -> Payments -> VisioFex Pay
 - Paste your production key from VisioFex into the "Secret Key" field
 - Paste your app ID from VisioFex into the "Vendor ID" field
-- Set "Your Store Domain" to your site URL (for example: https://example.com). Do not include a trailing slash
+- **Store Domain** is automatically detected (shows your site URL) - only change if using a different domain
+- Set **Auto Sync Window** to desired hours (1-48, default 24h) for automatic order refresh frequency
 - For production, uncheck "Enable test mode"
-- **Debugging**: Check "Enable debugging" for comprehensive logging (recommended during setup, can be disabled once working)
+- **Debugging**: Check "Enable debugging" for comprehensive logging including auto-sync operations (recommended during setup)
 - Check the "Enable" checkbox at the top to activate the payment method
 - Save changes to enable the gateway
 
 == Changelog ==
+
+= 1.4.8 =
+* **NEW**: Automatic order synchronization - pending VisioFex orders are automatically refreshed when visiting Orders page
+* **NEW**: Configurable auto-sync time window (1-48 hours, default 24h) with settings integration in payment gateway options
+* **NEW**: Smart transient locking prevents duplicate API calls during auto-sync operations (15-second lock duration)
+* **NEW**: Auto-detection of site URLs for return/success/cancel URLs - no more manual configuration errors
+* **NEW**: Enhanced protective CSS for card brand icons prevents oversizing in Elementor and other page builders
+* **NEW**: Comprehensive auto-sync logging shows eligible orders, API responses, and transaction ID resolution
+* **ENHANCED**: Auto-sync only processes orders with session IDs but missing transaction IDs within configured window
+* **ENHANCED**: Store domain field now auto-populated with site URL on activation and shows helpful placeholder text
+* **FIX**: Card brand icons (Visa, Mastercard, etc.) now properly constrained to prevent oversizing in theme builders
+* **FIX**: Auto-sync handles both classic WooCommerce orders and modern HPOS order storage systems
+* **IMPROVED**: Settings page shows "Auto-detected from your site" description for store domain field
+* **IMPROVED**: Auto-sync logs detailed information when debug logging is enabled for easy troubleshooting
+* **DEVELOPER**: CSS protection includes max-height constraints and object-fit rules for consistent card icon display
+* **DEVELOPER**: Auto-sync uses proper WordPress transient system and WooCommerce order query methods
 
 = 1.4.7 =
 * NEW: Setting to show/hide the VisioFex logo on checkout next to the payment title

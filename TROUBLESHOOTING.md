@@ -17,11 +17,6 @@ If you're using Elementor or other page builders and the VisioFex payment icons 
     object-fit: contain !important;
 }
 
-.elementor .visiofex-logo {
-    max-height: 42px !important;
-    width: auto !important;
-}
-
 /* Mobile responsive */
 @media (max-width: 768px) {
     .elementor .visiofex-card-icon {
@@ -29,9 +24,6 @@ If you're using Elementor or other page builders and the VisioFex payment icons 
         max-height: 28px !important;
     }
     
-    .elementor .visiofex-logo {
-        max-height: 32px !important;
-    }
 }
 ```
 
