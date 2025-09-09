@@ -78,3 +78,6 @@ visiofex.com.har
 
 # Git
 .gitignore
+create-order.sh
+delete-corrupted-customer.sh
+endpoints.txt

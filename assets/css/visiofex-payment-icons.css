@@ -24,7 +24,8 @@
 .visiofex-card-icon {
     height: 32px;
     width: auto;
-    /* No extra borders/shadows; just the icon itself */
+    max-height: 32px;
+    object-fit: contain;
 }
 
 .visiofex-card-icon svg {
@@ -40,10 +41,11 @@
     }
     
     .visiofex-logo {
-    max-height: 32px;
+        max-height: 32px;
     }
     
     .visiofex-card-icon {
-    height: 28px;
+        height: 28px;
+        max-height: 28px;
     }
 }
