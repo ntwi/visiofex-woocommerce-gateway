@@ -23,7 +23,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
  * Description: VisioFex/KonaCash hosted checkout for WooCommerce with refunds, Blocks support, and easy settings for keys, vendor id, and URLs.
  * Author:      NexaFlow Payments
  * Author URI:  https://nexaflowpayments.com
- * Version:     1.4.7
+ * Version:     1.4.8
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * WC requires at least: 7.0
@@ -34,7 +34,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'VXF_WC_VERSION', '1.4.7' );
+define( 'VXF_WC_VERSION', '1.4.8' );
 define( 'VXF_WC_PLUGIN_FILE', __FILE__ );
 define( 'VXF_WC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'VXF_WC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -58,6 +58,30 @@ add_filter( 'woocommerce_payment_gateways', function( $gateways ) {
     $gateways[] = 'WC_Gateway_VisioFex';
     return $gateways;
 } );
+
+/**
+ * GLOBAL HOOK: Force VisioFex payment method title to be consistent
+ * This runs at a high priority to override any other title formatting
+ */
+add_filter( 'woocommerce_order_get_payment_method_title', function( $title, $order ) {
+    if ( is_object( $order ) && method_exists( $order, 'get_payment_method' ) && $order->get_payment_method() === 'visiofex' ) {
+        // Force it to be lowercase 'visiofex' so WooCommerce formats it as "Payment via visiofex"
+        return 'visiofex';
+    }
+    return $title;
+}, 999, 2 ); // Very high priority
+
+/**
+ * GLOBAL HOOK: Also override the order item totals display
+ */
+add_filter( 'woocommerce_get_order_item_totals', function( $total_rows, $order ) {
+    if ( is_object( $order ) && method_exists( $order, 'get_payment_method' ) && $order->get_payment_method() === 'visiofex' ) {
+        if ( isset( $total_rows['payment_method'] ) ) {
+            $total_rows['payment_method']['value'] = __( 'Payment via visiofex', 'visiofex-woocommerce' );
+        }
+    }
+    return $total_rows;
+}, 999, 2 ); // Very high priority
 
 /**
  * Add Settings link on Plugins page.
@@ -137,9 +161,6 @@ add_action( 'plugins_loaded', function() {
 
             // Render description with bold lead in Classic checkout without requiring HTML in settings
             add_filter( 'woocommerce_gateway_description', array( $this, 'filter_gateway_description' ), 10, 2 );
-            
-            // Override payment method display in admin order list
-            add_filter( 'woocommerce_order_get_payment_method_title', array( $this, 'filter_order_payment_method_title' ), 10, 2 );
         }
 
         /**
@@ -157,12 +178,12 @@ add_action( 'plugins_loaded', function() {
         }
 
         public function get_title() {
-            // Checkout: show configured title (plain text) – no logo.
+            // Only show custom title on the checkout page. Elsewhere, return simple identifier.
             if ( function_exists( 'is_checkout' ) && is_checkout() ) {
                 $custom_title = $this->get_option( 'title', __( 'Pay by Credit or Debit Card', 'visiofex-woocommerce' ) );
                 return apply_filters( 'woocommerce_gateway_title', esc_html( $custom_title ), $this->id );
             }
-            // Elsewhere keep lowercase identifier so Woo renders "via visiofex" consistently.
+            // Non-checkout contexts (admin, order pages, emails): simple identifier
             return apply_filters( 'woocommerce_gateway_title', 'visiofex', $this->id );
         }
 
@@ -204,7 +225,7 @@ add_action( 'plugins_loaded', function() {
                 'description' => array(
                     'title'       => __( 'Description', 'visiofex-woocommerce' ),
                     'type'        => 'textarea',
-                    'default'     => __( 'Pay securely using your Visa, MasterCard, American Express or Discover. This method also allows Apple Pay, Cash App Pay and Pay with Amazon. After payment you will be redirected back to our website and your order will ship out right away.', 'visiofex-woocommerce' ),
+                    'default'     => __( 'Pay securely using your Visa, MasterCard, American Express or Discover. This method also allows Cash App and Pay with Amazon. After payment you will be redirected back to our website and your order will ship out right away.', 'visiofex-woocommerce' ),
                     'description' => __( 'This text will be displayed to customers during checkout.', 'visiofex-woocommerce' ),
                 ),
                 'testmode' => array(
@@ -257,20 +278,6 @@ add_action( 'plugins_loaded', function() {
 
             $html  = $this->format_description_html( $plain );
             return $html;
-        }
-
-        /**
-         * Override payment method title display in admin for all VisioFex orders
-         */
-        public function filter_order_payment_method_title( $title, $order ) {
-            // Only apply to VisioFex orders
-            if ( $order->get_payment_method() !== $this->id ) {
-                return $title;
-            }
-            
-            // Always normalize to lowercase identifier so Woo renders
-            // "Payment via visiofex" consistently on order screens and emails.
-            return 'visiofex';
         }
 
         /**
@@ -702,6 +709,10 @@ add_action( 'plugins_loaded', function() {
                 return array( 'result' => 'fail' );
             }
 
+            // ** THE FIX **: Immediately set the correct title before any other processing.
+            $order->set_payment_method_title( 'visiofex' );
+            $order->save();
+
             $this->log( 'Order found - Currency: ' . $order->get_currency() . ', Total: ' . $order->get_total() );
 
             // Validate gateway configuration
@@ -1060,6 +1071,49 @@ add_action( 'woocommerce_blocks_loaded', function() {
         $blocks_instance = new \WC_Gateway_VisioFex_Blocks();
         $registry->register( $blocks_instance );
     } );
+} );
+
+// Fix payment method title when new orders are processed
+add_action( 'woocommerce_checkout_order_processed', function( $order_id ) {
+    $order = wc_get_order( $order_id );
+    if ( $order && $order->get_payment_method() === 'visiofex' ) {
+        // Ensure the correct title is set when order is processed
+        $order->set_payment_method_title( 'visiofex' );
+        $order->save();
+    }
+}, 5 ); // Changed from 20 to 5 to run earlier
+
+// Additional hook: Fix title during order creation (even earlier)
+add_action( 'woocommerce_checkout_create_order', function( $order, $data ) {
+    if ( isset( $data['payment_method'] ) && $data['payment_method'] === 'visiofex' ) {
+        // Set the correct title immediately when order is created
+        $order->set_payment_method_title( 'visiofex' );
+    }
+}, 5, 2 );
+
+// One-time fix for existing orders when plugin loads
+add_action( 'init', function() {
+    // Only run this on admin pages and not too frequently
+    if ( is_admin() && get_transient( 'vxf_title_fix_lock' ) === false ) {
+        set_transient( 'vxf_title_fix_lock', 1, 3600 ); // Run max once per hour
+        
+        // Get recent VisioFex orders that might have wrong titles
+        $orders = wc_get_orders( array(
+            'limit'          => 50,
+            'payment_method' => 'visiofex',
+            'status'         => array( 'processing', 'completed', 'pending', 'on-hold' ),
+            'orderby'        => 'date',
+            'order'          => 'DESC'
+        ) );
+        
+        foreach ( $orders as $order ) {
+            $current_title = $order->get_payment_method_title();
+            if ( $current_title !== 'visiofex' ) {
+                $order->set_payment_method_title( 'visiofex' );
+                $order->save();
+            }
+        }
+    }
 } );
 
 

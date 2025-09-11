@@ -106,6 +106,11 @@ In wordpress (https://yoursite/wp-admin):
 * **FIX**: Improved handling of retry scenarios where previous refund attempts partially failed
 * **SECURITY**: Enhanced validation for admin operations with proper capability checks and nonce verification
 
+= 1.4.8 =
+* **FIX**: Resolved payment method title display inconsistency - now consistently shows "Payment via visiofex" in WooCommerce orders admin
+* **ENHANCED**: Added global hooks with high priority to ensure consistent payment method display across all contexts
+* **IMPROVED**: Cleaner code structure with removal of redundant filter methods and simplified logging
+
 = 1.4.4 =
 * **NEW**: Enhanced checkout UI with professional card brand icons (Visa, Mastercard, Amex, Discover)
 * **NEW**: Dynamic payment method branding - VisioFex logo with "Secure Payment" text on checkout
