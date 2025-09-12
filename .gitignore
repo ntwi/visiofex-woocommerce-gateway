@@ -42,6 +42,7 @@ yarn.lock
 
 # Composer
 vendor/
+!vendor/plugin-update-checker/
 composer.lock
 
 # OS Files
@@ -78,3 +79,7 @@ visiofex.com.har
 
 # Git
 .gitignore
+create-order.sh
+delete-corrupted-customer.sh
+endpoints.txt
+docker-compose.yml.backup
