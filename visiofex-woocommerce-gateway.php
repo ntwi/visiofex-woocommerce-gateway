@@ -57,6 +57,26 @@ $vxf_update_checker->setBranch('staging');
 // Optional: Set authentication for private repos (not needed for public repos)
 // $vxf_update_checker->setAuthentication('your-token-here');
 
+// Temporary: Force immediate update check and debug
+add_action( 'admin_init', function() {
+    global $vxf_update_checker;
+    if ( isset( $vxf_update_checker ) ) {
+        // Force check for updates
+        $update = $vxf_update_checker->checkForUpdates();
+        
+        // Debug logging
+        if ( function_exists( 'wc_get_logger' ) ) {
+            $logger = wc_get_logger();
+            $logger->log( 'info', 'PUC Debug: Update check result - ' . wp_json_encode( $update ), array( 'source' => 'visiofex' ) );
+            
+            // Check if we have a newer version
+            $current_version = VXF_WC_VERSION;
+            $new_version = isset( $update->version ) ? $update->version : 'none';
+            $logger->log( 'info', "PUC Debug: Current version: {$current_version}, New version: {$new_version}", array( 'source' => 'visiofex' ) );
+        }
+    }
+} );
+
 /**
  * Make sure WooCommerce is active.
  */
