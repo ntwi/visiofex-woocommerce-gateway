@@ -3,7 +3,7 @@ Contributors: your-company
 Tags: payments, checkout, woocommerce, visiofex, blocks, refunds
 Requires at least: 6.0
 Tested up to: 6.6
-Stable tag: 1.4.9
+Stable tag: 1.5.0
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
@@ -57,6 +57,11 @@ In wordpress (https://yoursite/wp-admin):
 - Save changes to enable the gateway
 
 == Changelog ==
+
+= 1.5.0 =
+* **REFACTOR**: Simplified auto-update mechanism to check only the `master` branch, removing multi-environment logic.
+* **REFACTOR**: Removed temporary debugging code related to the Plugin Update Checker.
+* **MAINTENANCE**: Updated plugin version to 1.5.0 for new release.
 
 = 1.4.9 =
 * **NEW**: Automatic plugin updates via GitHub integration - plugin will now auto-update from official repository

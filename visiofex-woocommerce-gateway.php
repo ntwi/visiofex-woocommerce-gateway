@@ -23,7 +23,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
  * Description: VisioFex/KonaCash hosted checkout for WooCommerce with refunds, Blocks support, and easy settings for keys, vendor id, and URLs.
  * Author:      NexaFlow Payments
  * Author URI:  https://nexaflowpayments.com
- * Version:     1.4.9.1
+ * Version:     1.5.0
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * WC requires at least: 7.0
@@ -34,7 +34,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'VXF_WC_VERSION', '1.4.9.1' ); // Auto-update test version
+define( 'VXF_WC_VERSION', '1.5.0' );
 define( 'VXF_WC_PLUGIN_FILE', __FILE__ );
 define( 'VXF_WC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'VXF_WC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -50,57 +50,13 @@ $vxf_update_checker = PucFactory::buildUpdateChecker(
     __FILE__,
     'visiofex-woocommerce-gateway'
 );
+$vxf_update_checker->setBranch('master');
 
-// Set the branch for updates (use 'staging' for testing, 'master' for stable releases)
-$vxf_update_checker->setBranch('staging');
+// Use the main checker for backward compatibility, but both branches will be checked
+// WordPress will show updates from whichever branch has the newer version
 
 // Optional: Set authentication for private repos (not needed for public repos)
 // $vxf_update_checker->setAuthentication('your-token-here');
-
-// Temporary: Force immediate update check and debug
-add_action( 'admin_init', function() {
-    global $vxf_update_checker;
-    if ( isset( $vxf_update_checker ) ) {
-        // Force check for updates
-        $update = $vxf_update_checker->checkForUpdates();
-        
-        // Debug logging
-        if ( function_exists( 'wc_get_logger' ) ) {
-            $logger = wc_get_logger();
-            $logger->log( 'info', 'PUC Debug: Update check result - ' . wp_json_encode( $update ), array( 'source' => 'visiofex' ) );
-            
-            // Check if we have a newer version
-            $current_version = VXF_WC_VERSION;
-            $new_version = isset( $update->version ) ? $update->version : 'none';
-            $logger->log( 'info', "PUC Debug: Current version: {$current_version}, New version: {$new_version}", array( 'source' => 'visiofex' ) );
-            
-            // Check for any PUC errors
-            if ( method_exists( $vxf_update_checker, 'getLastRequestInfo' ) ) {
-                $request_info = $vxf_update_checker->getLastRequestInfo();
-                $logger->log( 'info', 'PUC Debug: Last request info - ' . wp_json_encode( $request_info ), array( 'source' => 'visiofex' ) );
-            }
-            
-            // Try manual API call to GitHub
-            $github_url = 'https://api.github.com/repos/chiznitz/visiofex-woocommerce-gateway/contents/visiofex-woocommerce-gateway.php?ref=staging';
-            $response = wp_remote_get( $github_url );
-            if ( ! is_wp_error( $response ) ) {
-                $logger->log( 'info', 'PUC Debug: Manual GitHub API call successful', array( 'source' => 'visiofex' ) );
-                $body = wp_remote_retrieve_body( $response );
-                $data = json_decode( $body, true );
-                if ( isset( $data['content'] ) ) {
-                    $content = base64_decode( $data['content'] );
-                    if ( strpos( $content, 'Version:' ) !== false ) {
-                        preg_match( '/Version:\s*([^\s]+)/', $content, $matches );
-                        $remote_version = isset( $matches[1] ) ? $matches[1] : 'not found';
-                        $logger->log( 'info', "PUC Debug: Remote version from GitHub: {$remote_version}", array( 'source' => 'visiofex' ) );
-                    }
-                }
-            } else {
-                $logger->log( 'error', 'PUC Debug: Manual GitHub API call failed - ' . $response->get_error_message(), array( 'source' => 'visiofex' ) );
-            }
-        }
-    }
-} );
 
 /**
  * Make sure WooCommerce is active.
