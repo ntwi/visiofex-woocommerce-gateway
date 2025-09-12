@@ -23,7 +23,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
  * Description: VisioFex/KonaCash hosted checkout for WooCommerce with refunds, Blocks support, and easy settings for keys, vendor id, and URLs.
  * Author:      NexaFlow Payments
  * Author URI:  https://nexaflowpayments.com
- * Version:     1.4.8
+ * Version:     1.4.9
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * WC requires at least: 7.0
@@ -34,7 +34,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'VXF_WC_VERSION', '1.4.8' );
+define( 'VXF_WC_VERSION', '1.4.9' );
 define( 'VXF_WC_PLUGIN_FILE', __FILE__ );
 define( 'VXF_WC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'VXF_WC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -51,8 +51,8 @@ $vxf_update_checker = PucFactory::buildUpdateChecker(
     'visiofex-woocommerce-gateway'
 );
 
-// Set the branch for updates (use 'master' for stable releases)
-$vxf_update_checker->setBranch('master');
+// Set the branch for updates (use 'staging' for testing, 'master' for stable releases)
+$vxf_update_checker->setBranch('staging');
 
 // Optional: Set authentication for private repos (not needed for public repos)
 // $vxf_update_checker->setAuthentication('your-token-here');

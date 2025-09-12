@@ -3,7 +3,7 @@ Contributors: your-company
 Tags: payments, checkout, woocommerce, visiofex, blocks, refunds
 Requires at least: 6.0
 Tested up to: 6.6
-Stable tag: 1.4.8
+Stable tag: 1.4.9
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
@@ -57,6 +57,15 @@ In wordpress (https://yoursite/wp-admin):
 - Save changes to enable the gateway
 
 == Changelog ==
+
+= 1.4.9 =
+* **NEW**: Automatic plugin updates via GitHub integration - plugin will now auto-update from official repository
+* **NEW**: Staging branch support for testing updates before production release
+* **SECURITY**: Enhanced session ID validation - prevents duplicate session IDs across multiple orders
+* **SECURITY**: Session ID conflict detection with proper error logging and admin notifications
+* **IMPROVED**: Comprehensive protection against session ID manipulation vulnerabilities
+* **DEVELOPER**: Integrated Plugin Update Checker v5.6 for seamless GitHub-based updates
+* **DEVELOPER**: Auto-sync now includes duplicate session tracking to prevent cross-order contamination
 
 = 1.4.8 =
 * **NEW**: Automatic order synchronization - pending VisioFex orders are automatically refreshed when visiting Orders page
