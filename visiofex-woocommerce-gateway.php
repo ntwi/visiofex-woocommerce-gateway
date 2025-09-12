@@ -34,7 +34,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'VXF_WC_VERSION', '1.4.9' );
+define( 'VXF_WC_VERSION', '1.4.9.1' ); // Auto-update test version
 define( 'VXF_WC_PLUGIN_FILE', __FILE__ );
 define( 'VXF_WC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'VXF_WC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -1190,6 +1190,7 @@ register_deactivation_hook( __FILE__, function() {} );
 
 add_action( 'woocommerce_admin_order_data_after_order_details', 'vxf_admin_order_panel', 10, 1 );
 
+if ( ! function_exists( 'vxf_admin_order_panel' ) ) {
 function vxf_admin_order_panel( $order ) {
     if ( ! $order instanceof WC_Order ) {
         return;
@@ -1337,6 +1338,7 @@ function vxf_admin_order_panel( $order ) {
     });
     </script>
     <?php
+}
 }
 
 
