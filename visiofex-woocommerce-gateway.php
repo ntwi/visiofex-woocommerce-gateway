@@ -23,7 +23,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
  * Description: VisioFex/KonaCash hosted checkout for WooCommerce with refunds, Blocks support, and easy settings for keys, vendor id, and URLs.
  * Author:      NexaFlow Payments
  * Author URI:  https://nexaflowpayments.com
- * Version:     1.4.9
+ * Version:     1.4.9.1
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * WC requires at least: 7.0
@@ -73,6 +73,31 @@ add_action( 'admin_init', function() {
             $current_version = VXF_WC_VERSION;
             $new_version = isset( $update->version ) ? $update->version : 'none';
             $logger->log( 'info', "PUC Debug: Current version: {$current_version}, New version: {$new_version}", array( 'source' => 'visiofex' ) );
+            
+            // Check for any PUC errors
+            if ( method_exists( $vxf_update_checker, 'getLastRequestInfo' ) ) {
+                $request_info = $vxf_update_checker->getLastRequestInfo();
+                $logger->log( 'info', 'PUC Debug: Last request info - ' . wp_json_encode( $request_info ), array( 'source' => 'visiofex' ) );
+            }
+            
+            // Try manual API call to GitHub
+            $github_url = 'https://api.github.com/repos/chiznitz/visiofex-woocommerce-gateway/contents/visiofex-woocommerce-gateway.php?ref=staging';
+            $response = wp_remote_get( $github_url );
+            if ( ! is_wp_error( $response ) ) {
+                $logger->log( 'info', 'PUC Debug: Manual GitHub API call successful', array( 'source' => 'visiofex' ) );
+                $body = wp_remote_retrieve_body( $response );
+                $data = json_decode( $body, true );
+                if ( isset( $data['content'] ) ) {
+                    $content = base64_decode( $data['content'] );
+                    if ( strpos( $content, 'Version:' ) !== false ) {
+                        preg_match( '/Version:\s*([^\s]+)/', $content, $matches );
+                        $remote_version = isset( $matches[1] ) ? $matches[1] : 'not found';
+                        $logger->log( 'info', "PUC Debug: Remote version from GitHub: {$remote_version}", array( 'source' => 'visiofex' ) );
+                    }
+                }
+            } else {
+                $logger->log( 'error', 'PUC Debug: Manual GitHub API call failed - ' . $response->get_error_message(), array( 'source' => 'visiofex' ) );
+            }
         }
     }
 } );
