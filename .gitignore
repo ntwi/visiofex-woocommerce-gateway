@@ -42,6 +42,7 @@ yarn.lock
 
 # Composer
 vendor/
+!vendor/plugin-update-checker/
 composer.lock
 
 # OS Files

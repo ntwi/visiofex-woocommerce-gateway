@@ -40,6 +40,24 @@ define( 'VXF_WC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'VXF_WC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 /**
+ * Initialize Plugin Update Checker for auto-updates from GitHub
+ */
+require_once VXF_WC_PLUGIN_DIR . 'vendor/plugin-update-checker/plugin-update-checker.php';
+use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
+
+$vxf_update_checker = PucFactory::buildUpdateChecker(
+    'https://github.com/chiznitz/visiofex-woocommerce-gateway/',
+    __FILE__,
+    'visiofex-woocommerce-gateway'
+);
+
+// Set the branch for updates (use 'master' for stable releases)
+$vxf_update_checker->setBranch('master');
+
+// Optional: Set authentication for private repos (not needed for public repos)
+// $vxf_update_checker->setAuthentication('your-token-here');
+
+/**
  * Make sure WooCommerce is active.
  */
 add_action( 'plugins_loaded', function() {
@@ -436,6 +454,12 @@ add_action( 'plugins_loaded', function() {
                     $this->log( 'Invalid session ID format from URL parameter', 'error' );
                     return;
                 }
+                // Check if this session ID is already used by another order
+                if ( $this->is_session_id_used_by_another_order( $session_id, $order->get_id() ) ) {
+                    $this->log( 'Session ID from URL already used by another order: ' . $session_id, 'error' );
+                    $order->add_order_note( 'VisioFex: Session ID conflict detected. Please contact support.' );
+                    return;
+                }
                 $order->update_meta_data( '_visiofex_session_id', $session_id );
                 $this->log( 'Session ID obtained from URL parameter: ' . $session_id );
             }
@@ -530,6 +554,12 @@ add_action( 'plugins_loaded', function() {
                 // Validate session ID format
                 if ( ! preg_match( '/^[a-zA-Z0-9_-]+$/', $session_id ) ) {
                     $this->log( 'Invalid session ID format from URL parameter', 'error' );
+                    return;
+                }
+                // Check if this session ID is already used by another order
+                if ( $this->is_session_id_used_by_another_order( $session_id, $order->get_id() ) ) {
+                    $this->log( 'Session ID from URL already used by another order: ' . $session_id, 'error' );
+                    $order->add_order_note( 'VisioFex: Session ID conflict detected. Please contact support.' );
                     return;
                 }
                 $order->update_meta_data('_visiofex_session_id', $session_id);
@@ -798,6 +828,13 @@ add_action( 'plugins_loaded', function() {
                 
                 $this->log( 'Session created successfully - RequestID: ' . ( $request_id ?: 'none' ) . ', SessionID: ' . ( $session_id ?: 'none' ) );
                 
+                // Check if this session ID is already used by another order (extra safety check)
+                if ( $session_id && $this->is_session_id_used_by_another_order( $session_id, $order->get_id() ) ) {
+                    $this->log( 'Session ID from API already used by another order: ' . $session_id, 'error' );
+                    wc_add_notice( __( 'Payment gateway error. Please try again.', 'visiofex-woocommerce' ), 'error' );
+                    return array( 'result' => 'fail' );
+                }
+                
                 $order->update_meta_data( '_visiofex_request_id', $request_id );
                 $order->update_meta_data( '_visiofex_session_id', $session_id );
                 $order->update_meta_data( '_visiofex_api_base', esc_url_raw( $this->get_api_base() ) );
@@ -1057,6 +1094,30 @@ add_action( 'plugins_loaded', function() {
             }
             
             return $masked;
+        }
+
+        /**
+         * Check if a session ID is already used by another order
+         */
+        private function is_session_id_used_by_another_order( $session_id, $exclude_order_id = null ) {
+            if ( empty( $session_id ) ) {
+                return false;
+            }
+
+            $args = array(
+                'limit'        => 1,
+                'meta_key'     => '_visiofex_session_id',
+                'meta_value'   => $session_id,
+                'meta_compare' => '=',
+                'return'       => 'ids',
+            );
+
+            if ( $exclude_order_id ) {
+                $args['exclude'] = array( $exclude_order_id );
+            }
+
+            $orders = wc_get_orders( $args );
+            return ! empty( $orders );
         }
     }
 }, 5 );
@@ -1372,6 +1433,7 @@ if ( ! function_exists( 'visiofex_batch_auto_sync_orders' ) ) {
         // Collect eligible orders (session id present, no transaction id yet)
         $eligible = array();
         if ( ! empty( $orders ) ) {
+            $used_sessions = array(); // Track sessions already processed
             foreach ( $orders as $order ) {
                 $oid = $order->get_id();
                 // Use WooCommerce order methods for HPOS compatibility
@@ -1382,7 +1444,12 @@ if ( ! function_exists( 'visiofex_batch_auto_sync_orders' ) ) {
                 
                 if ( $has_txn_id ) { continue; }
                 if ( ! $session_id ) { continue; }
+                if ( in_array( $session_id, $used_sessions, true ) ) {
+                    visiofex_log( 'Auto-sync: skipping order #' . $oid . ' - session ' . $session_id . ' already processed for another order' );
+                    continue;
+                }
                 $eligible[] = array( 'order' => $order, 'session' => $session_id );
+                $used_sessions[] = $session_id;
             }
         }
 
