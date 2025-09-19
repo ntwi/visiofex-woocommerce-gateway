@@ -3,7 +3,7 @@ Contributors: your-company
 Tags: payments, checkout, woocommerce, visiofex, blocks, refunds
 Requires at least: 6.0
 Tested up to: 6.6
-Stable tag: 1.5.0
+Stable tag: 1.5.5
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
@@ -57,6 +57,40 @@ In wordpress (https://yoursite/wp-admin):
 - Save changes to enable the gateway
 
 == Changelog ==
+
+= 1.5.5 =
+* **CRITICAL FIX**: Removed duplicate WooCommerce Blocks registration that was causing WordPress notices and header warnings
+* **CLEANUP**: Eliminated duplicate payment method title fixing hooks outside the main plugins_loaded action
+* **IMPROVED**: Cleaner, more maintainable code structure with reduced redundancy
+* **STABILITY**: Resolved "visiofex is already registered" error and cascading header modification warnings
+* **PERFORMANCE**: Streamlined plugin loading process with proper duplicate prevention
+
+= 1.5.4 =
+* **CRITICAL FIX**: Added comprehensive duplicate registration protection for WooCommerce Blocks integration
+* **NEW**: Static flag system prevents multiple WooCommerce Blocks registration attempts during WordPress initialization
+* **NEW**: Registry check validation ensures payment method isn't registered multiple times
+* **ENHANCED**: Two-layer protection against duplicate registration: static flag + registry validation
+* **FIX**: Resolved WordPress notices about duplicate payment method registration
+* **IMPROVED**: More robust WooCommerce Blocks integration with proper error prevention
+
+= 1.5.3 =
+* **CRITICAL FIX**: Corrected WooCommerce Blocks class name from "WC_Gateway_VisioFex_Blocks_Support" to "WC_Gateway_VisioFex_Blocks"
+* **FIX**: Resolved fatal PHP error that prevented WordPress from loading when plugin was activated before WooCommerce
+* **IMPROVED**: WooCommerce Blocks integration now properly instantiates the correct class
+* **STABILITY**: Plugin now loads gracefully regardless of activation order relative to WooCommerce
+
+= 1.5.2 =
+* **CRITICAL FIX**: Consolidated all WooCommerce-dependent code inside plugins_loaded action with proper safety checks
+* **SECURITY**: Added validation to ensure WooCommerce classes exist before attempting to extend them
+* **IMPROVED**: Plugin now handles activation in any order relative to WooCommerce without fatal errors
+* **ENHANCED**: Better error messaging when WooCommerce is not active - shows admin notice instead of fatal error
+* **STABILITY**: Eliminated PHP fatal errors when WooCommerce is deactivated or not installed
+
+= 1.5.1 =
+* **CRITICAL FIX**: Fixed return URL redirect issue that was sending customers back to checkout instead of order confirmation page
+* **IMPROVED**: Now uses WooCommerce's built-in `get_return_url()` and `get_cancel_order_url()` helper methods for proper URL generation
+* **ENHANCED**: URLs are now future-proof and work correctly with any permalink structure or WooCommerce endpoint configuration
+* **RELIABILITY**: Customers will now properly land on the "Thank you for your order" page after completing payment through VisioFex
 
 = 1.5.0 =
 * **REFACTOR**: Simplified auto-update mechanism to check only the `master` branch, removing multi-environment logic.
