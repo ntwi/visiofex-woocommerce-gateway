@@ -23,7 +23,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
  * Description: VisioFex/KonaCash hosted checkout for WooCommerce with refunds, Blocks support, and easy settings for keys, vendor id, and URLs.
  * Author:      NexaFlow Payments
  * Author URI:  https://nexaflowpayments.com
- * Version:     1.5.1
+ * Version:     1.5.5
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * WC requires at least: 7.0
@@ -34,7 +34,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'VXF_WC_VERSION', '1.5.1' );
+define( 'VXF_WC_VERSION', '1.5.5' );
 define( 'VXF_WC_PLUGIN_FILE', __FILE__ );
 define( 'VXF_WC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'VXF_WC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -68,69 +68,18 @@ add_action( 'plugins_loaded', function() {
         } );
         return;
     }
-}, 1 );
 
-/**
- * Register gateway.
- */
-add_filter( 'woocommerce_payment_gateways', function( $gateways ) {
-    $gateways[] = 'WC_Gateway_VisioFex';
-    return $gateways;
-} );
+    /**
+     * Register gateway.
+     */
+    add_filter( 'woocommerce_payment_gateways', function( $gateways ) {
+        $gateways[] = 'WC_Gateway_VisioFex';
+        return $gateways;
+    } );
 
-/**
- * GLOBAL HOOK: Force VisioFex payment method title to be consistent
- * This runs at a high priority to override any other title formatting
- */
-add_filter( 'woocommerce_order_get_payment_method_title', function( $title, $order ) {
-    if ( is_object( $order ) && method_exists( $order, 'get_payment_method' ) && $order->get_payment_method() === 'visiofex' ) {
-        // Force it to be lowercase 'visiofex' so WooCommerce formats it as "Payment via visiofex"
-        return 'visiofex';
-    }
-    return $title;
-}, 999, 2 ); // Very high priority
-
-/**
- * GLOBAL HOOK: Also override the order item totals display
- */
-add_filter( 'woocommerce_get_order_item_totals', function( $total_rows, $order ) {
-    if ( is_object( $order ) && method_exists( $order, 'get_payment_method' ) && $order->get_payment_method() === 'visiofex' ) {
-        if ( isset( $total_rows['payment_method'] ) ) {
-            $total_rows['payment_method']['value'] = __( 'Payment via visiofex', 'visiofex-woocommerce' );
-        }
-    }
-    return $total_rows;
-}, 999, 2 ); // Very high priority
-
-/**
- * Add Settings link on Plugins page.
- */
-add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), function( $links ) {
-    $url = admin_url( 'admin.php?page=wc-settings&tab=checkout&section=visiofex' );
-    $links[] = '<a href="' . esc_url( $url ) . '">Settings</a>';
-    return $links;
-} );
-
-/**
- * Enqueue redirect fallback script on checkout pages.
- */
-add_action( 'wp_enqueue_scripts', function() {
-    if ( is_checkout() && ! is_wc_endpoint_url( 'order-received' ) ) {
-        wp_enqueue_script(
-            'visiofex-redirect-fallback',
-            VXF_WC_PLUGIN_URL . 'assets/js/visiofex-redirect-fallback.js',
-            array(),
-            VXF_WC_VERSION,
-            true
-        );
-    }
-} );
-
-/**
- * Gateway class.
- */
-add_action( 'plugins_loaded', function() {
-
+    /**
+     * Gateway class.
+     */
     class WC_Gateway_VisioFex extends WC_Payment_Gateway {
         // Declare properties to fix PHP 8.2+ deprecation warnings
         public $testmode;
@@ -1113,62 +1062,101 @@ add_action( 'plugins_loaded', function() {
             return ! empty( $orders );
         }
     }
-}, 5 );
 
-/** WooCommerce Blocks registration (simple; server-side processing handles the charge) */
-add_action( 'woocommerce_blocks_loaded', function() {
-    if ( ! class_exists( '\Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType' ) ) {
-        return;
-    }
-    require_once VXF_WC_PLUGIN_DIR . 'includes/class-wc-gateway-visiofex-blocks.php';
-    add_action( 'woocommerce_blocks_payment_method_type_registration', function( \Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry $registry ) {
-        $blocks_instance = new \WC_Gateway_VisioFex_Blocks();
-        $registry->register( $blocks_instance );
-    } );
-} );
+    /**
+     * GLOBAL HOOK: Force VisioFex payment method title to be consistent
+     * This runs at a high priority to override any other title formatting
+     */
+    add_filter( 'woocommerce_order_get_payment_method_title', function( $title, $order ) {
+        if ( is_object( $order ) && method_exists( $order, 'get_payment_method' ) && $order->get_payment_method() === 'visiofex' ) {
+            // Force it to be lowercase 'visiofex' so WooCommerce formats it as "Payment via visiofex"
+            return 'visiofex';
+        }
+        return $title;
+    }, 999, 2 ); // Very high priority
 
-// Fix payment method title when new orders are processed
-add_action( 'woocommerce_checkout_order_processed', function( $order_id ) {
-    $order = wc_get_order( $order_id );
-    if ( $order && $order->get_payment_method() === 'visiofex' ) {
-        // Ensure the correct title is set when order is processed
-        $order->set_payment_method_title( 'visiofex' );
-        $order->save();
-    }
-}, 5 ); // Changed from 20 to 5 to run earlier
-
-// Additional hook: Fix title during order creation (even earlier)
-add_action( 'woocommerce_checkout_create_order', function( $order, $data ) {
-    if ( isset( $data['payment_method'] ) && $data['payment_method'] === 'visiofex' ) {
-        // Set the correct title immediately when order is created
-        $order->set_payment_method_title( 'visiofex' );
-    }
-}, 5, 2 );
-
-// One-time fix for existing orders when plugin loads
-add_action( 'init', function() {
-    // Only run this on admin pages and not too frequently
-    if ( is_admin() && get_transient( 'vxf_title_fix_lock' ) === false ) {
-        set_transient( 'vxf_title_fix_lock', 1, 3600 ); // Run max once per hour
-        
-        // Get recent VisioFex orders that might have wrong titles
-        $orders = wc_get_orders( array(
-            'limit'          => 50,
-            'payment_method' => 'visiofex',
-            'status'         => array( 'processing', 'completed', 'pending', 'on-hold' ),
-            'orderby'        => 'date',
-            'order'          => 'DESC'
-        ) );
-        
-        foreach ( $orders as $order ) {
-            $current_title = $order->get_payment_method_title();
-            if ( $current_title !== 'visiofex' ) {
-                $order->set_payment_method_title( 'visiofex' );
-                $order->save();
+    /**
+     * GLOBAL HOOK: Also override the order item totals display
+     */
+    add_filter( 'woocommerce_get_order_item_totals', function( $total_rows, $order ) {
+        if ( is_object( $order ) && method_exists( $order, 'get_payment_method' ) && $order->get_payment_method() === 'visiofex' ) {
+            if ( isset( $total_rows['payment_method'] ) ) {
+                $total_rows['payment_method']['value'] = __( 'Payment via visiofex', 'visiofex-woocommerce' );
             }
         }
-    }
-} );
+        return $total_rows;
+    }, 999, 2 ); // Very high priority
+
+    /**
+     * Add Settings link on Plugins page.
+     */
+    add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), function( $links ) {
+        $url = admin_url( 'admin.php?page=wc-settings&tab=checkout&section=visiofex' );
+        $links[] = '<a href="' . esc_url( $url ) . '">Settings</a>';
+        return $links;
+    } );
+
+    /**
+     * Enqueue redirect fallback script on checkout pages.
+     */
+    add_action( 'wp_enqueue_scripts', function() {
+        if ( is_checkout() && ! is_wc_endpoint_url( 'order-received' ) ) {
+            wp_enqueue_script(
+                'visiofex-redirect-fallback',
+                VXF_WC_PLUGIN_URL . 'assets/js/visiofex-redirect-fallback.js',
+                array(),
+                VXF_WC_VERSION,
+                true
+            );
+        }
+    } );
+
+    /** WooCommerce Blocks registration (simple; server-side processing handles the charge) */
+    add_action( 'woocommerce_blocks_loaded', function() {
+        // Static flag to prevent duplicate registration
+        static $vxf_blocks_registered = false;
+        if ( $vxf_blocks_registered ) {
+            return;
+        }
+        
+        if ( ! class_exists( '\Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType' ) ) {
+            return;
+        }
+        
+        require_once VXF_WC_PLUGIN_DIR . 'includes/class-wc-gateway-visiofex-blocks.php';
+        add_action( 'woocommerce_blocks_payment_method_type_registration', function( \Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry $registry ) {
+            // Additional check to prevent duplicate registration
+            if ( $registry->is_registered( 'visiofex' ) ) {
+                return;
+            }
+            $blocks_instance = new WC_Gateway_VisioFex_Blocks();
+            $registry->register( $blocks_instance );
+        } );
+        
+        $vxf_blocks_registered = true;
+    } );
+
+    // Fix payment method title when new orders are processed
+    add_action( 'woocommerce_checkout_order_processed', function( $order_id ) {
+        $order = wc_get_order( $order_id );
+        if ( $order && $order->get_payment_method() === 'visiofex' ) {
+            $order->set_payment_method_title( 'visiofex' );
+            $order->save();
+        }
+    }, 5 ); // Changed from 20 to 5 to run earlier
+
+    // Additional hook: Fix title during order creation (even earlier)
+    add_action( 'woocommerce_checkout_create_order', function( $order, $data ) {
+        if ( $order && isset( $data['payment_method'] ) && $data['payment_method'] === 'visiofex' ) {
+            $order->set_payment_method_title( 'visiofex' );
+        }
+    }, 5, 2 );
+
+    // One-time fix for existing orders when plugin loads
+    add_action( 'init', function() {
+        // This could be implemented if needed for migration
+    } );
+}, 1 );
 
 
 register_activation_hook( __FILE__, function() {
