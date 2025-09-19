@@ -23,7 +23,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
  * Description: VisioFex/KonaCash hosted checkout for WooCommerce with refunds, Blocks support, and easy settings for keys, vendor id, and URLs.
  * Author:      NexaFlow Payments
  * Author URI:  https://nexaflowpayments.com
- * Version:     1.5.0
+ * Version:     1.5.1
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * WC requires at least: 7.0
@@ -34,7 +34,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'VXF_WC_VERSION', '1.5.0' );
+define( 'VXF_WC_VERSION', '1.5.1' );
 define( 'VXF_WC_PLUGIN_FILE', __FILE__ );
 define( 'VXF_WC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'VXF_WC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -767,18 +767,10 @@ add_action( 'plugins_loaded', function() {
             
             $this->log( 'Testing empty line items approach - Line items count: ' . count( $line_items ) . ', WC Total: ' . $order_total );
             
-            $order_key = $order->get_order_key();
-            // Validate and sanitize URLs
-            $base_domain = untrailingslashit( esc_url_raw( $this->store_domain ) );
-            if ( ! $base_domain || ! filter_var( $base_domain, FILTER_VALIDATE_URL ) ) {
-                $this->log( 'Invalid store domain configured: ' . $this->store_domain, 'error' );
-                wc_add_notice( __( 'Payment gateway configuration error.', 'visiofex-woocommerce' ), 'error' );
-                return array( 'result' => 'fail' );
-            }
-            
-            $success = $base_domain . '/checkout/order-received/' . absint( $order->get_id() ) . '/?key=' . sanitize_text_field( $order_key );
-            $return  = $base_domain . '/checkout/';
-            $cancel  = $base_domain . '/checkout/?cancel_order=' . sanitize_text_field( $order_key );
+            // Canonical WooCommerce URLs using proper helper methods
+            $success = $this->get_return_url( $order );   // ✅ correct thank-you URL
+            $return  = $success;                           // ✅ send customers back to thank-you
+            $cancel  = $order->get_cancel_order_url();     // ✅ proper cancel URL (with key & id)
 
             $this->log( 'Generated URLs - Success: ' . $success . ', Return: ' . $return . ', Cancel: ' . $cancel );
 
