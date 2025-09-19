@@ -3,7 +3,7 @@ Contributors: your-company
 Tags: payments, checkout, woocommerce, visiofex, blocks, refunds
 Requires at least: 6.0
 Tested up to: 6.6
-Stable tag: 1.5.0
+Stable tag: 1.5.1
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
@@ -57,6 +57,12 @@ In wordpress (https://yoursite/wp-admin):
 - Save changes to enable the gateway
 
 == Changelog ==
+
+= 1.5.1 =
+* **CRITICAL FIX**: Fixed return URL redirect issue that was sending customers back to checkout instead of order confirmation page
+* **IMPROVED**: Now uses WooCommerce's built-in `get_return_url()` and `get_cancel_order_url()` helper methods for proper URL generation
+* **ENHANCED**: URLs are now future-proof and work correctly with any permalink structure or WooCommerce endpoint configuration
+* **RELIABILITY**: Customers will now properly land on the "Thank you for your order" page after completing payment through VisioFex
 
 = 1.5.0 =
 * **REFACTOR**: Simplified auto-update mechanism to check only the `master` branch, removing multi-environment logic.
