@@ -23,7 +23,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
  * Description: VisioFex/KonaCash hosted checkout for WooCommerce with refunds, Blocks support, and easy settings for keys, vendor id, and URLs.
  * Author:      NexaFlow Payments
  * Author URI:  https://nexaflowpayments.com
- * Version:     1.5.5
+ * Version:     1.5.6
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * WC requires at least: 7.0
@@ -34,7 +34,7 @@ define('VXF_DEFAULT_STORE_DOMAIN', 'https://yourdomain.com');
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'VXF_WC_VERSION', '1.5.5' );
+define( 'VXF_WC_VERSION', '1.5.6' );
 define( 'VXF_WC_PLUGIN_FILE', __FILE__ );
 define( 'VXF_WC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'VXF_WC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -717,8 +717,8 @@ add_action( 'plugins_loaded', function() {
             $this->log( 'Testing empty line items approach - Line items count: ' . count( $line_items ) . ', WC Total: ' . $order_total );
             
             // Canonical WooCommerce URLs using proper helper methods
-            $success = $this->get_return_url( $order );   // ✅ correct thank-you URL
-            $return  = $success;                           // ✅ send customers back to thank-you
+            $success = $this->get_return_url( $order );   // ✅ correct thank-you URL (after successful payment)
+            $return  = wc_get_checkout_url();              // ✅ checkout page (for "back to store" button)
             $cancel  = $order->get_cancel_order_url();     // ✅ proper cancel URL (with key & id)
 
             $this->log( 'Generated URLs - Success: ' . $success . ', Return: ' . $return . ', Cancel: ' . $cancel );
