@@ -3,7 +3,7 @@ Contributors: your-company
 Tags: payments, checkout, woocommerce, visiofex, blocks, refunds
 Requires at least: 6.0
 Tested up to: 6.6
-Stable tag: 1.5.5
+Stable tag: 1.5.6
 License: MIT
 License URI: https://opensource.org/licenses/MIT
 
@@ -57,6 +57,12 @@ In wordpress (https://yoursite/wp-admin):
 - Save changes to enable the gateway
 
 == Changelog ==
+
+= 1.5.6 =
+* **CRITICAL FIX**: Fixed "back to store" button on VisioFex payment portal - now correctly returns to checkout page instead of order received page
+* **IMPROVED**: Separated returnURL (checkout page) from successURL (thank-you page) for proper user flow
+* **ENHANCED**: Better distinction between payment success redirect and store navigation
+* **RELIABILITY**: Customers can now properly return to checkout if they need to change payment details
 
 = 1.5.5 =
 * **CRITICAL FIX**: Removed duplicate WooCommerce Blocks registration that was causing WordPress notices and header warnings
